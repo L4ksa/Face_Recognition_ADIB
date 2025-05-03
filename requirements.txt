@@ -1,5 +1,5 @@
 streamlit
 deepface
 opencv-python-headless
-pillow
-tensorflow==2.18.1
+Pillow
+tensorflow
