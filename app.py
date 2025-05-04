@@ -46,12 +46,13 @@ if uploaded_file is not None:
 
     try:
         # Recognize faces
-        results = DeepFace.find(img_path=img_array, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
+        results_list = DeepFace.find(img_path=img_array, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
+        results_df = results_list[0] if results_list else pd.DataFrame()
 
         # Display results
         st.subheader("Recognition Results")
-        if results and not results[0].empty:
-            for i, res in results[0].iterrows():
+        if not results_df.empty:
+            for i, res in results_df.iterrows():
                 st.write(f"Match {i+1}: {res['identity']} with distance {round(res['distance'], 3)}")
         else:
             st.write("No known faces detected.")
