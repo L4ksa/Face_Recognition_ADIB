@@ -40,26 +40,31 @@ st.write("Upload an image and the system will recognize known faces.")
 
 uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
 
+# Define a threshold for matching (e.g., 0.6)
+THRESHOLD = 0.6
+
 if uploaded_file is not None:
     img = Image.open(uploaded_file)
-    st.image(img, caption='Uploaded Image', use_column_width=True)
-
-    # Save uploaded image to a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-        img.save(temp_file.name)
-        temp_img_path = temp_file.name
+    img_array = np.array(img)
+    st.image(img_array, caption='Uploaded Image', use_column_width=True)
 
     try:
-        # Recognize faces using the image path
-        results = DeepFace.find(img_path=temp_img_path, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
+        # Recognize faces
+        results = DeepFace.find(img_path=img_array, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
 
-        # Display results
+        # Display results with distance filtering
         st.subheader("Recognition Results")
-        if results and not results[0].empty:
-            for i, res in results[0].iterrows():
+        matches = results[0]
+        filtered_matches = matches[matches['distance'] < THRESHOLD]
+
+        # Limit to top 5 closest matches
+        top_matches = filtered_matches.sort_values(by='distance').head(5)
+
+        if not top_matches.empty:
+            for i, res in top_matches.iterrows():
                 st.write(f"Match {i+1}: {res['identity']} with distance {round(res['distance'], 3)}")
         else:
-            st.write("No known faces detected.")
+            st.write("No known faces detected within the threshold.")
 
     except Exception as e:
         st.error(f"Error: {e}")
