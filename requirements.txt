@@ -1,5 +1,11 @@
+# Install system-level dependencies
+# apt-get update && apt-get install -y libgl1-mesa-glx
+
 streamlit
 deepface
+tensorflow
 opencv-python-headless
 Pillow
-tensorflow
+gdown
+requests
+numpy
