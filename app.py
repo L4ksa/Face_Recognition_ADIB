@@ -2,19 +2,13 @@ import os
 import numpy as np
 import pandas as pd
 from deepface import DeepFace
-from deepface.commons import functions
 import cv2
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # Define path to known faces
 KNOWN_FACES_DIR = "./known_faces"
 
-## Step 2: Preprocessing Function
-def preprocess_image(img_path):
-    img = functions.preprocess_face(img_path, target_size=(224, 224), enforce_detection=False)
-    return img
-
-## Step 3: Load Dataset (Assume LFW is organized in folders by person name)
+## Step 2: Load Dataset (Assume LFW is organized in folders by person name)
 def load_known_faces(base_dir):
     embeddings = []
     labels = []
@@ -51,15 +45,16 @@ if uploaded_file is not None:
     st.image(img_array, caption='Uploaded Image', use_column_width=True)
 
     try:
-        # Detect faces
-        detections = DeepFace.analyze(img_path=img_array, actions=["emotion"], enforce_detection=False)
+        # Recognize faces
         results = DeepFace.find(img_path=img_array, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
 
-        # Display bounding boxes and identities
+        # Display results
         st.subheader("Recognition Results")
-        for i, res in enumerate(results[0].iterrows()):
-            index, data = res
-            st.write(f"Match {i+1}: {data['identity']} with {round(data['distance'], 3)} distance")
+        if results and not results[0].empty:
+            for i, res in results[0].iterrows():
+                st.write(f"Match {i+1}: {res['identity']} with distance {round(res['distance'], 3)}")
+        else:
+            st.write("No known faces detected.")
 
     except Exception as e:
         st.error(f"Error: {e}")
