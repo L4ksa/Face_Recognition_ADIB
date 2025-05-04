@@ -14,7 +14,7 @@ train_model = st.button("Train Model")
 
 if train_model:
     # Path to LFW dataset
-    lfw_path = r"C:\Users\adibs\Downloads\face_recognition_app\known_faces"
+    lfw_path = "C:\\Users\\adibs\\Downloads\\face_recognition_app\\known_faces"
     
     # Function to load and preprocess the dataset
     def preprocess_lfw_data():
