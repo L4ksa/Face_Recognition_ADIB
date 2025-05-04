@@ -35,9 +35,19 @@ model_name = "Facenet"  # You can change to "VGG-Face" or "DeepFace" for compari
 
 # Perform face recognition on a test image from the LFW dataset
 def perform_face_recognition(uploaded_image, model_name):
-    # Convert the uploaded image to numpy array
-    img = np.array(bytearray(uploaded_image.read()), dtype=np.uint8)
-    img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+    # Read the image file as a byte array
+    image_bytes = uploaded_image.read()
+    
+    # Convert byte array to numpy array
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    
+    # Decode the numpy array into an image
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    # Check if the image was successfully decoded
+    if img is None:
+        st.error("Error decoding image. Please upload a valid image file.")
+        return None
     
     # Perform face recognition using the pre-trained model
     result = DeepFace.find(img_path=img, db_path=lfw_path, model_name=model_name)
