@@ -6,4 +6,5 @@ Pillow
 gdown
 requests
 numpy
+matplotlib
 tf-keras
