@@ -7,7 +7,7 @@ import cv2
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # Define path to known faces
-KNOWN_FACES_DIR = "C:/Users/adibs/Downloads/face_recognition_app/known_faces"
+KNOWN_FACES_DIR = "./known_faces"
 
 ## Step 2: Preprocessing Function
 def preprocess_image(img_path):
