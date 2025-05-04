@@ -54,18 +54,22 @@ if uploaded_file is not None:
 
         # Display results with distance filtering
         st.subheader("Recognition Results")
-        matches = results[0]
-        filtered_matches = matches[matches['distance'] < THRESHOLD]
+        
+        if results:
+            matches = results[0]  # The first element contains the DataFrame of matches
+            filtered_matches = matches[matches['distance'] < THRESHOLD]
 
-        # Limit to top 5 closest matches
-        top_matches = filtered_matches.sort_values(by='distance').head(5)
+            # Limit to top 5 closest matches
+            top_matches = filtered_matches.sort_values(by='distance').head(5)
 
-        if not top_matches.empty:
-            for i, res in top_matches.iterrows():
-                st.write(f"Match {i+1}: {res['identity']} with distance {round(res['distance'], 3)}")
+            if not top_matches.empty:
+                for i, res in top_matches.iterrows():
+                    st.write(f"Match {i+1}: {res['identity']} with distance {round(res['distance'], 3)}")
+            else:
+                st.write("No known faces detected within the threshold.")
         else:
-            st.write("No known faces detected within the threshold.")
-
+            st.write("No faces found in the uploaded image.")
+        
     except Exception as e:
         st.error(f"Error: {e}")
 
