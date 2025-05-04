@@ -3,7 +3,8 @@ import streamlit as st
 from deepface import DeepFace
 import os
 from PIL import Image
-from opencv-python-headless import cv2
+import opencv-python-headless as opencv
+from opencv import cv2
 
 st.title("Face Recognition App (LFW-based)")
 
