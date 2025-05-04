@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 from deepface import DeepFace
 import matplotlib.pyplot as plt
-from deepface.commons import functions
 
 # Set the path to the LFW dataset
 lfw_path = "./known_faces"  # Update with your dataset path
