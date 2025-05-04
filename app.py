@@ -34,8 +34,13 @@ images, labels = preprocess_lfw_data()
 model_name = "Facenet"  # You can change to "VGG-Face" or "DeepFace" for comparison
 
 # Perform face recognition on a test image from the LFW dataset
-def perform_face_recognition(image_path, model_name):
-    result = DeepFace.find(img_path=image_path, db_path=lfw_path, model_name=model_name)
+def perform_face_recognition(uploaded_image, model_name):
+    # Convert the uploaded image to numpy array
+    img = np.array(bytearray(uploaded_image.read()), dtype=np.uint8)
+    img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+    
+    # Perform face recognition using the pre-trained model
+    result = DeepFace.find(img_path=img, db_path=lfw_path, model_name=model_name)
     return result
 
 # Streamlit Interface
@@ -46,7 +51,8 @@ uploaded_image = st.file_uploader("Choose an image for face recognition", type=[
 
 if uploaded_image is not None:
     # Display the uploaded image
-    img = cv2.imdecode(np.fromstring(uploaded_image.read(), np.uint8), cv2.IMREAD_COLOR)
+    img = np.array(bytearray(uploaded_image.read()), dtype=np.uint8)
+    img = cv2.imdecode(img, cv2.IMREAD_COLOR)
     st.image(img, channels="BGR", use_column_width=True)
 
     # Perform face recognition using the pre-trained model
