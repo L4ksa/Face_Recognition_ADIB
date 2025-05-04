@@ -1,11 +1,10 @@
 streamlit
 deepface
+opencv-python
 tensorflow
-opencv-python-headless
+keras
+pandas
+numpy
+scikit-learn
 Pillow
 gdown
-requests
-numpy
-matplotlib
-tf-keras
-scikit-learn
