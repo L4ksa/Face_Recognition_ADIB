@@ -42,7 +42,7 @@ uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
 if uploaded_file is not None:
     img = Image.open(uploaded_file)
     img_array = np.array(img)
-    st.image(img_array, caption='Uploaded Image', use_column_width=True)
+    st.image(img_array, caption='Uploaded Image', use_container_width=True)
 
     try:
         # Recognize faces
