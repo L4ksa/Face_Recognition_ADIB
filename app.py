@@ -33,8 +33,8 @@ if train_model:
                     except Exception as e:
                         st.error(f"Error processing image {image_path}: {e}")
     
-    st.write(f"Loaded {len(images)} images.")
-    return np.array(images), np.array(labels)
+        st.write(f"Loaded {len(images)} images.")
+        return np.array(images), np.array(labels)
 
     # Preprocessing data
     images, labels = preprocess_lfw_data()
