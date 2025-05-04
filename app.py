@@ -4,6 +4,7 @@ import pandas as pd
 from deepface import DeepFace
 import cv2
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import tempfile
 
 # Define path to known faces
 KNOWN_FACES_DIR = "./known_faces"
@@ -41,18 +42,21 @@ uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     img = Image.open(uploaded_file)
-    img_array = np.array(img)
-    st.image(img_array, caption='Uploaded Image', use_container_width=True)
+    st.image(img, caption='Uploaded Image', use_column_width=True)
+
+    # Save uploaded image to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+        img.save(temp_file.name)
+        temp_img_path = temp_file.name
 
     try:
-        # Recognize faces
-        results_list = DeepFace.find(img_path=img_array, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
-        results_df = results_list[0] if results_list else pd.DataFrame()
+        # Recognize faces using the image path
+        results = DeepFace.find(img_path=temp_img_path, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
 
         # Display results
         st.subheader("Recognition Results")
-        if not results_df.empty:
-            for i, res in results_df.iterrows():
+        if results and not results[0].empty:
+            for i, res in results[0].iterrows():
                 st.write(f"Match {i+1}: {res['identity']} with distance {round(res['distance'], 3)}")
         else:
             st.write("No known faces detected.")
