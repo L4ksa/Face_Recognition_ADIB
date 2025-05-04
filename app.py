@@ -18,19 +18,23 @@ if train_model:
     
     # Function to load and preprocess the dataset
     def preprocess_lfw_data():
-        images = []
-        labels = []
-        for folder_name in os.listdir(lfw_path):
-            folder_path = os.path.join(lfw_path, folder_name)
-            if os.path.isdir(folder_path):
-                for image_name in os.listdir(folder_path):
-                    image_path = os.path.join(folder_path, image_name)
-                    # Preprocess the face
+    images = []
+    labels = []
+    for folder_name in os.listdir(lfw_path):
+        folder_path = os.path.join(lfw_path, folder_name)
+        if os.path.isdir(folder_path):
+            for image_name in os.listdir(folder_path):
+                image_path = os.path.join(folder_path, image_name)
+                # Preprocess the face
+                try:
                     img = DeepFace.detectFace(image_path, enforce_detection=False)
                     images.append(img)
                     labels.append(folder_name)
+                except Exception as e:
+                    st.error(f"Error processing image {image_path}: {e}")
 
-        return np.array(images), np.array(labels)
+    st.write(f"Loaded {len(images)} images.")
+    return np.array(images), np.array(labels)
 
     # Preprocessing data
     images, labels = preprocess_lfw_data()
