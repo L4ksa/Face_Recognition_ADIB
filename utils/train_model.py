@@ -9,8 +9,8 @@ import joblib
 import pandas as pd
 from utils.prepare_lfw_dataset import load_dataset  # Assuming prepare_lfw_dataset.py is in the same directory
 
-train_csv = "peopleDevTrain.csv"
-test_csv = "peopleDevTest.csv"
+train_csv = os.path.join("utils", "peopleDevTrain.csv")
+test_csv = os.path.join("utils", "peopleDevTest.csv")
 
 def extract_hog_features(images):
     """
