@@ -77,7 +77,7 @@ def train_face_recognizer(dataset_path, model_path):
     
     # Train SVM classifier
     print("Training SVM classifier...")
-    classifier = SVC(kernel='linear', probability=True)
+    classifier = SVC(kernel='rbf', probability=True)
     classifier.fit(X_train, y_train)
     
     # Save the model
