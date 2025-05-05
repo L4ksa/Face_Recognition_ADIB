@@ -46,23 +46,23 @@ def prepare_data(dataset_path="dataset", train_csv="utils/peopleDevTrain.csv", t
 
     # Process training data
     for _, row in train_df.iterrows():
-        img_path = os.path.join(dataset_path, row['person'], f"{row['person']}_{row['index']}.jpg")
+        img_path = os.path.join(dataset_path, row['name'], f"{row['name']}_{row['images']}.jpg")
         img = Image.open(img_path)
         img = np.array(img)  # Convert the image to a numpy array
         images.append(img)
-        labels.append(row['person'])
-        if row['person'] not in target_names:
-            target_names.append(row['person'])
+        labels.append(row['name'])
+        if row['name'] not in target_names:
+            target_names.append(row['name'])
 
     # Process testing data
     test_images = []
     test_labels = []
     for _, row in test_df.iterrows():
-        img_path = os.path.join(dataset_path, row['person'], f"{row['person']}_{row['index']}.jpg")
+        img_path = os.path.join(dataset_path, row['name'], f"{row['name']}_{row['images']}.jpg")
         img = Image.open(img_path)
         img = np.array(img)  # Convert the image to a numpy array
         test_images.append(img)
-        test_labels.append(row['person'])
+        test_labels.append(row['name'])
 
     return (images, labels, target_names), (test_images, test_labels)
 
