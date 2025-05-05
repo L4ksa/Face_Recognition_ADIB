@@ -4,7 +4,7 @@ import pickle
 from PIL import Image
 from deepface import DeepFace
 from utils.prepare_lfw_dataset import save_lfw_dataset
-from train_model import train_model
+from utils.train_model import train_model
 
 st.set_page_config(page_title="Face Recognition System", page_icon=":smiley:")
 st.title("Face Recognition System")
