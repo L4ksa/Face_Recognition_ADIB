@@ -1,3 +1,5 @@
+# Face Recognition System using DeepFace, Streamlit, and LFW Dataset
+
 # 1. Model Development
 
 ## Step 1: Import Required Libraries
@@ -10,9 +12,20 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 import tempfile
+import zipfile
+import shutil
+import kaggle
 
-# Define path to known faces
-KNOWN_FACES_DIR = "./known_faces"
+# Download and extract LFW dataset from Kaggle
+LFW_ZIP_PATH = os.path.join(tempfile.gettempdir(), "lfw-dataset.zip")
+LFW_EXTRACT_DIR = os.path.join(tempfile.gettempdir(), "lfw-dataset")
+
+if not os.path.exists(LFW_EXTRACT_DIR):
+    kaggle.api.authenticate()
+    kaggle.api.dataset_download_files("jessicali9530/lfw-dataset", path=tempfile.gettempdir(), unzip=True)
+
+# Use extracted folder for known faces
+KNOWN_FACES_DIR = os.path.join(LFW_EXTRACT_DIR, "lfw")
 
 ## Step 2: Load Dataset (Assume LFW is organized in folders by person name)
 def load_known_faces(base_dir):
@@ -38,9 +51,12 @@ def load_known_faces(base_dir):
 known_embeddings, known_labels = load_known_faces(KNOWN_FACES_DIR)
 
 # Train KNN Classifier
-X_train, X_test, y_train, y_test = train_test_split(known_embeddings, known_labels, test_size=0.2, random_state=42)
-knn = KNeighborsClassifier(n_neighbors=3)
-knn.fit(X_train, y_train)
+if len(known_embeddings) > 0:
+    X_train, X_test, y_train, y_test = train_test_split(known_embeddings, known_labels, test_size=0.2, random_state=42)
+    knn = KNeighborsClassifier(n_neighbors=3)
+    knn.fit(X_train, y_train)
+else:
+    knn = None
 
 # 2. GUI Development (Streamlit)
 
@@ -66,16 +82,19 @@ if uploaded_file is not None:
         if result and isinstance(result, list) and "embedding" in result[0]:
             embedding = np.array(result[0]["embedding"]).reshape(1, -1)
 
-            # Predict using KNN
-            distances, indices = knn.kneighbors(embedding)
-            threshold = 0.7
+            if knn:
+                # Predict using KNN
+                distances, indices = knn.kneighbors(embedding)
+                threshold = 0.7
 
-            st.subheader("Recognition Result")
-            if distances[0][0] < threshold:
-                predicted_identity = knn.classes_[indices[0][0]]
-                st.write(f"Predicted identity: {predicted_identity} (distance: {distances[0][0]:.3f})")
+                st.subheader("Recognition Result")
+                if distances[0][0] < threshold:
+                    predicted_identity = knn.classes_[indices[0][0]]
+                    st.write(f"Predicted identity: {predicted_identity} (distance: {distances[0][0]:.3f})")
+                else:
+                    st.write("No match found (distance too high).")
             else:
-                st.write("No match found (distance too high).")
+                st.write("KNN model is not trained due to insufficient data.")
         else:
             st.write("No face detected or embedding could not be extracted.")
 
@@ -94,13 +113,14 @@ def evaluate_model(test_dir):
                 result = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)
                 if result and isinstance(result, list) and "embedding" in result[0]:
                     embedding = np.array(result[0]["embedding"]).reshape(1, -1)
-                    distances, indices = knn.kneighbors(embedding)
-                    if distances[0][0] < 0.7:
-                        prediction = knn.classes_[indices[0][0]]
-                    else:
-                        prediction = "unknown"
-                    y_true.append(person)
-                    y_pred.append(prediction)
+                    if knn:
+                        distances, indices = knn.kneighbors(embedding)
+                        if distances[0][0] < 0.7:
+                            prediction = knn.classes_[indices[0][0]]
+                        else:
+                            prediction = "unknown"
+                        y_true.append(person)
+                        y_pred.append(prediction)
             except:
                 continue
     return {
@@ -109,3 +129,9 @@ def evaluate_model(test_dir):
         "recall": recall_score(y_true, y_pred, average='weighted', zero_division=0),
         "f1_score": f1_score(y_true, y_pred, average='weighted', zero_division=0)
     }
+
+# Example usage for evaluation (optional)
+# test_metrics = evaluate_model(KNOWN_FACES_DIR)
+# print(test_metrics)
+
+# Note: For deployment, simply use `streamlit run app.py` or deploy via Streamlit Cloud.
