@@ -33,7 +33,7 @@ def load_csv(csv_path):
     df = pd.read_csv(csv_path)
     return df
 
-def prepare_data(dataset_path="dataset", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
+def prepare_data(dataset_path="dataset/lfw-deepfunneled/lfw-deepfunneled", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
     """
     Loads the dataset, using CSVs for splitting and labeling, and processes it.
     """
