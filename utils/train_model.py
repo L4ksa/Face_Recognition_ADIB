@@ -7,10 +7,7 @@ from skimage.feature import hog
 from sklearn.model_selection import train_test_split
 import joblib
 import pandas as pd
-from utils.prepare_lfw_dataset import load_dataset  # Assuming prepare_lfw_dataset.py is in the same directory
-
-train_csv = os.path.join("utils", "peopleDevTrain.csv")
-test_csv = os.path.join("utils", "peopleDevTest.csv")
+from prepare_lfw_dataset import load_dataset  # Assuming prepare_lfw_dataset.py is in the same directory
 
 def extract_hog_features(images):
     """
@@ -31,10 +28,11 @@ def load_csv(csv_path):
     """
     Load the CSV file that contains image paths and labels.
     """
+    print(f"Loading CSV file: {csv_path}")
     df = pd.read_csv(csv_path)
     return df
 
-def prepare_data(dataset_path="dataset", train_csv="peopleDevTrain.csv", test_csv="peopleDevTest.csv"):
+def prepare_data(dataset_path="dataset", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
     """
     Loads the dataset, using CSVs for splitting and labeling, and processes it.
     """
@@ -68,7 +66,7 @@ def prepare_data(dataset_path="dataset", train_csv="peopleDevTrain.csv", test_cs
 
     return (images, labels, target_names), (test_images, test_labels)
 
-def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv="peopleDevTrain.csv", test_csv="peopleDevTest.csv"):
+def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
     """
     Loads dataset, extracts features, trains an SVM classifier, and saves the model.
     """
