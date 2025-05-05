@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import pickle
 import numpy as np
+import cv2
 from PIL import Image
 from deepface import DeepFace
 from utils.prepare_lfw_dataset import save_lfw_dataset
