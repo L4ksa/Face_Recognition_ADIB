@@ -48,35 +48,48 @@ def prepare_data(dataset_path="dataset", train_csv="utils/peopleDevTrain.csv", t
     """
     Loads the dataset, using CSVs for splitting and labeling, and processes it.
     """
-    # Load CSV files for training and testing data
-    train_df = load_csv(train_csv)
-    test_df = load_csv(test_csv)
+    def load_split(csv_path):
+        images = []
+        labels = []
+        with open(csv_path, "r", newline='') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                name = row["name"]
+                num_images = int(row["images"])
+                folder_name = name  # name is already formatted like "Bill_Simon"
+                folder_path = os.path.join(dataset_path, folder_name)
 
-    images = []
-    labels = []
-    target_names = []
+                if not os.path.isdir(folder_path):
+                    print(f"⚠️ Folder not found: {folder_path}")
+                    continue
 
-    # Process training data
-    for _, row in train_df.iterrows():
-        img_path = os.path.join(dataset_path, row['name'], f"{row['name']}_{row['images']}.jpg")
-        img = Image.open(img_path)
-        img = np.array(img)  # Convert the image to a numpy array
-        images.append(img)
-        labels.append(row['name'])
-        if row['name'] not in target_names:
-            target_names.append(row['name'])
+                # Get all .jpg files sorted for consistency
+                img_files = sorted([
+                    fname for fname in os.listdir(folder_path)
+                    if fname.lower().endswith(".jpg")
+                ])
 
-    # Process testing data
-    test_images = []
-    test_labels = []
-    for _, row in test_df.iterrows():
-        img_path = os.path.join(dataset_path, row['name'], f"{row['name']}_{row['images']}.jpg")
-        img = Image.open(img_path)
-        img = np.array(img)  # Convert the image to a numpy array
-        test_images.append(img)
-        test_labels.append(row['name'])
+                # Only load up to `num_images`
+                for fname in img_files[:num_images]:
+                    img_path = os.path.join(folder_path, fname)
+                    if not os.path.exists(img_path):
+                        print(f"⚠️ Image not found: {img_path}")
+                        continue
+                    try:
+                        img = Image.open(img_path).convert("RGB")
+                        images.append(np.array(img))
+                        labels.append(name)
+                    except Exception as e:
+                        print(f"❌ Error loading image {img_path}: {e}")
+        return images, labels
 
-    return (images, labels, target_names), (test_images, test_labels)
+    print("📥 Loading training set...")
+    X_train, y_train = load_split(train_csv)
+
+    print("📥 Loading testing set...")
+    X_test, y_test = load_split(test_csv)
+
+    return (X_train, y_train), (X_test, y_test)
 
 def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
     """
