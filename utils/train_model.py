@@ -96,12 +96,10 @@ def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_
     Loads dataset, extracts features, trains an SVM classifier, and saves the model.
     """
     print("Loading dataset...")
-    # Show dataset folder structure
-    print_dataset_structure(dataset_path)
     
-    (images, labels, target_names), (test_images, test_labels) = prepare_data(dataset_path, train_csv, test_csv)
+    (X_train, y_train), (X_test, y_test) = prepare_data(dataset_path, train_csv, test_csv)
 
-    if len(images) == 0:
+    if len(X_train) == 0:
         print("No images found in the dataset.")
         return
     
@@ -110,13 +108,13 @@ def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_
 
     # Extract features from the images
     print("Extracting HOG features from images...")
-    X_train = extract_hog_features(images)
-    X_test = extract_hog_features(test_images)
+    X_train = extract_hog_features(X_train)
+    X_test = extract_hog_features(X_test)
     
     # Encode the labels
     label_encoder = LabelEncoder()
-    y_train = label_encoder.fit_transform(labels)
-    y_test = label_encoder.transform(test_labels)  # Apply the same encoding for test labels
+    y_train = label_encoder.fit_transform(y_train)
+    y_test = label_encoder.transform(y_test)  # Apply the same encoding for test labels
     
     # Train the SVM classifier
     print("Training SVM classifier...")
