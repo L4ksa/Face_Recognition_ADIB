@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 from PIL import Image
 from deepface import DeepFace
+from deepface.detectors import FaceDetector
 from utils.prepare_lfw_dataset import save_lfw_dataset
 from utils.train_model import train_face_recognizer
 
@@ -55,33 +56,49 @@ if model_ready:
         # Convert PIL Image to OpenCV format
         image_cv = np.array(image)
         image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
-
-        # Detect faces using DeepFace (it will automatically detect faces)
-        faces = DeepFace.detectFace(image_cv, detector_backend='opencv', enforce_detection=False)
-
-        if len(faces) == 0:
+    
+        # Use OpenCV to detect face bounding boxes
+        detector_backend = 'opencv'
+        face_detector = FaceDetector.build_model(detector_backend)
+        faces_coords = FaceDetector.detect_faces(face_detector, detector_backend, image_cv, align=False)
+    
+        if len(faces_coords) == 0:
             st.warning("No faces detected in the image!")
             return image_cv
-
-        # Get embeddings using DeepFace
+    
         embeddings = []
-        for face in faces:
-            embedding = DeepFace.represent(face, model_name="VGG-Face", enforce_detection=False)[0]['embedding']
-            embeddings.append(embedding)
+        boxes = []
+    
+        for face_info in faces_coords:
+            x, y, w, h = face_info["facial_area"]
+            face_img = image_cv[y:y+h, x:x+w]
+            try:
+                embedding_obj = DeepFace.represent(
+                    face_img,
+                    model_name="VGG-Face",
+                    detector_backend=detector_backend,
+                    enforce_detection=False
+                )[0]
+                embeddings.append(embedding_obj["embedding"])
+                boxes.append((x, y, w, h))
+            except Exception as e:
+                print("Embedding error:", e)
+    
+        if len(embeddings) == 0:
+            st.warning("No embeddings could be generated.")
+            return image_cv
 
-        # Predict using classifier
-        predictions = classifier.predict(embeddings)
-        names = label_encoder.inverse_transform(predictions)
+    # Predict using classifier
+    predictions = classifier.predict(embeddings)
+    names = label_encoder.inverse_transform(predictions)
 
-        # Draw bounding boxes and names
-        for i, name in enumerate(names):
-            x, y, w, h = faces[i]
-            cv2.rectangle(image_cv, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            cv2.putText(image_cv, name, (x, y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+    # Draw bounding boxes and names
+    for (x, y, w, h), name in zip(boxes, names):
+        cv2.rectangle(image_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.putText(image_cv, name, (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        return image_cv
-
+    return image_cv
     if option == "Upload Image":
         uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
