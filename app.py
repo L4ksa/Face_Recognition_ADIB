@@ -31,7 +31,7 @@ model_ready = os.path.exists(MODEL_PATH)
 if not model_ready:
     if st.sidebar.button("Train Model"):
         with st.spinner("Training model..."):
-            train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv=="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv")
+            train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv")
         st.sidebar.success("Model trained and saved.")
         model_ready = True
 else:
