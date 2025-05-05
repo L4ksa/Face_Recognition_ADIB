@@ -24,8 +24,8 @@ def load_people_split(csv_path, base_dir):
     df = pd.read_csv(csv_path)
 
     for _, row in df.iterrows():
-        person = row['Name'].replace(" ", "_")
-        num_images = int(row['Images'])
+        person = row['name'].replace(" ", "_")
+        num_images = int(row['images'])
         for i in range(1, num_images + 1):
             image_filename = f"{person}_{i:04d}.jpg"
             image_path = os.path.join(base_dir, person, image_filename)
