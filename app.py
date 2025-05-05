@@ -2,130 +2,129 @@ import streamlit as st
 import cv2
 import numpy as np
 import os
-import pickle
+import shutil
+import zipfile
 from PIL import Image
+import pickle
+
+from utils.face_utils import detect_faces, align_face, get_face_embeddings
 from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
-from utils.face_utils import detect_faces, align_face, get_face_embeddings
-from pathlib import Path
-from tqdm import tqdm
 
-# Constants
-DATASET_DIR = "known_faces"
 MODEL_PATH = "models/face_recognizer.pkl"
 
-st.set_page_config(page_title="Face Recognition with Auto-Training", page_icon="📷")
+st.set_page_config(page_title="Face Recognition System", page_icon="🧠")
 st.title("Face Recognition System")
+st.write("Train and recognize faces using your own dataset!")
 
-# Function to train the model
-def train_model_from_dataset():
+# Caching model loading
+@st.cache_resource
+def load_model():
+    with open(MODEL_PATH, "rb") as f:
+        model_data = pickle.load(f)
+    return model_data['classifier'], model_data['label_encoder']
+
+# Helper: Train the face recognition model
+def train_model(dataset_path):
     embeddings = []
     labels = []
 
-    st.info("No model found. Training from dataset...")
-    progress = st.progress(0)
-    i = 0
-
-    for person_name in os.listdir(DATASET_DIR):
-        person_path = os.path.join(DATASET_DIR, person_name)
+    for person_name in os.listdir(dataset_path):
+        person_path = os.path.join(dataset_path, person_name)
         if not os.path.isdir(person_path):
             continue
-
-        for filename in os.listdir(person_path):
-            file_path = os.path.join(person_path, filename)
+        for img_name in os.listdir(person_path):
+            img_path = os.path.join(person_path, img_name)
             try:
-                image = cv2.imread(file_path)
-                if image is None:
-                    continue
+                image = cv2.imread(img_path)
                 faces = detect_faces(image)
+
                 if len(faces) == 0:
                     continue
-                aligned = align_face(image, faces[0])
-                if aligned is None:
-                    continue
-                embedding = get_face_embeddings(aligned)
-                embeddings.append(embedding)
-                labels.append(person_name)
-            except Exception as e:
-                print(f"Failed processing {file_path}: {e}")
 
-        i += 1
-        progress.progress(i / len(os.listdir(DATASET_DIR)))
+                for face in faces:
+                    aligned = align_face(image, face)
+                    embedding = get_face_embeddings(aligned)
+                    embeddings.append(embedding)
+                    labels.append(person_name)
+            except Exception as e:
+                st.warning(f"Failed to process {img_path}: {e}")
 
     if not embeddings:
-        st.error("No valid data found in dataset. Cannot train model.")
+        st.error("No valid face embeddings found in the dataset.")
         return None, None
 
-    # Train classifier
+    X = np.array(embeddings)
+    y = np.array(labels)
     label_encoder = LabelEncoder()
-    y = label_encoder.fit_transform(labels)
-    clf = SVC(probability=True)
-    clf.fit(embeddings, y)
+    y_encoded = label_encoder.fit_transform(y)
+
+    clf = SVC(kernel='linear', probability=True)
+    clf.fit(X, y_encoded)
 
     # Save model
     os.makedirs("models", exist_ok=True)
     with open(MODEL_PATH, "wb") as f:
         pickle.dump({'classifier': clf, 'label_encoder': label_encoder}, f)
 
-    st.success("✅ Model trained and saved successfully.")
+    st.success("Model trained and saved successfully!")
     return clf, label_encoder
 
-# Load or train model
-@st.cache_resource
-def load_or_train_model():
-    if not os.path.exists(MODEL_PATH):
-        return train_model_from_dataset()
-    else:
-        with open(MODEL_PATH, "rb") as f:
-            model_data = pickle.load(f)
-        return model_data['classifier'], model_data['label_encoder']
+# ========== TRAINING SECTION ========== #
+st.header("Step 1: Train Model with Dataset")
+zip_file = st.file_uploader("Upload dataset as ZIP (folder/person/images)", type="zip")
 
-classifier, label_encoder = load_or_train_model()
+if zip_file:
+    with st.spinner("Extracting and training..."):
+        dataset_dir = "dataset"
+        if os.path.exists(dataset_dir):
+            shutil.rmtree(dataset_dir)
+        os.makedirs(dataset_dir, exist_ok=True)
 
-# Sidebar
-st.sidebar.header("Options")
-option = st.sidebar.radio("Select input type:", ("Upload Image", "Use Webcam"))
+        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+            zip_ref.extractall(dataset_dir)
 
-# Face recognition
-def recognize_faces(image_pil):
-    image_np = np.array(image_pil)
-    image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
-    faces = detect_faces(image_bgr)
+        classifier, label_encoder = train_model(dataset_dir)
 
-    if not faces:
-        st.warning("No faces detected.")
-        return image_bgr
+# ========== RECOGNITION SECTION ========== #
+if os.path.exists(MODEL_PATH):
+    st.header("Step 2: Recognize Faces in Image")
+    uploaded_image = st.file_uploader("Upload an image to recognize faces", type=["jpg", "jpeg", "png"])
 
-    embeddings = []
-    valid_faces = []
-    for face in faces:
-        aligned = align_face(image_bgr, face)
-        if aligned is not None:
-            embeddings.append(get_face_embeddings(aligned))
-            valid_faces.append(face)
+    classifier, label_encoder = load_model()
 
-    if not embeddings:
-        st.warning("No embeddings could be extracted.")
-        return image_bgr
+    def recognize_faces(image):
+        img_cv = np.array(image)
+        img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
 
-    predictions = classifier.predict(embeddings)
-    names = label_encoder.inverse_transform(predictions)
+        faces = detect_faces(img_cv)
+        if len(faces) == 0:
+            st.warning("No faces detected.")
+            return img_cv
 
-    for face, name in zip(valid_faces, names):
-        x, y, w, h = face.left(), face.top(), face.width(), face.height()
-        cv2.rectangle(image_bgr, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        cv2.putText(image_bgr, name, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36, 255, 12), 2)
+        for face in faces:
+            try:
+                aligned = align_face(img_cv, face)
+                embedding = get_face_embeddings(aligned).reshape(1, -1)
+                pred = classifier.predict(embedding)
+                name = label_encoder.inverse_transform(pred)[0]
 
-    return image_bgr
+                x, y, w, h = face.left(), face.top(), face.width(), face.height()
+                cv2.rectangle(img_cv, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                cv2.putText(img_cv, name, (x, y-10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            except Exception as e:
+                st.warning(f"Recognition error: {e}")
 
-# Main app input
-if option == "Upload Image":
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file).convert("RGB")
+        return cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
+
+    if uploaded_image:
+        image = Image.open(uploaded_image)
         st.image(image, caption="Uploaded Image", use_column_width=True)
 
         if st.button("Recognize Faces"):
             with st.spinner("Processing..."):
-                result_image = recognize_faces(image)
-                st.image(cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB), caption="Recognition Result", use_column_width=True)
+                result = recognize_faces(image)
+                st.image(result, caption="Result", use_column_width=True)
+else:
+    st.info("Please upload a training dataset first.")
