@@ -1,10 +1,6 @@
 streamlit
-opencv-python-headless
-face_recognition
 deepface
 numpy
+opencv-python
 Pillow
 scikit-learn
-rich
-markdown-it-py
-pygments
