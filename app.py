@@ -14,16 +14,14 @@ from sklearn.model_selection import train_test_split
 import tempfile
 import zipfile
 import shutil
+import streamlit as st
+from PIL import Image
+
+# Set Kaggle environment variables from Streamlit secrets
+os.environ['KAGGLE_USERNAME'] = st.secrets["KAGGLE_USERNAME"]
+os.environ['KAGGLE_KEY'] = st.secrets["KAGGLE_KEY"]
+
 import kaggle
-
-# Ensure .kaggle directory exists
-os.makedirs(os.path.expanduser("~/.kaggle"), exist_ok=True)
-
-# Copy kaggle.json from .devcontainer to ~/.kaggle
-shutil.copyfile(".devcontainer/kaggle.json", os.path.expanduser("~/.kaggle/kaggle.json"))
-
-# Set correct permissions (only needed on Unix)
-os.chmod(os.path.expanduser("~/.kaggle/kaggle.json"), 0o600)
 
 # Download and extract LFW dataset from Kaggle
 LFW_ZIP_PATH = os.path.join(tempfile.gettempdir(), "lfw-dataset.zip")
@@ -68,9 +66,6 @@ else:
     knn = None
 
 # 2. GUI Development (Streamlit)
-
-import streamlit as st
-from PIL import Image
 
 st.title("Face Recognition System")
 st.write("Upload an image and the system will recognize known faces.")
