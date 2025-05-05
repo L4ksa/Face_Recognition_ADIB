@@ -10,6 +10,10 @@ import pandas as pd
 from utils.prepare_lfw_dataset import load_dataset  # Assuming prepare_lfw_dataset.py is in the same directory
 from PIL import Image
 
+train_csv = os.path.join("utils", "peopleDevTrain.csv")
+test_csv = os.path.join("utils", "peopleDevTest.csv")
+
+
 def extract_hog_features(images):
     """
     Extracts HOG features from a list of images.
@@ -44,7 +48,7 @@ def print_dataset_structure(dataset_path):
             print(f"{subindent}{f}")
     print()  # Blank line for readability
 
-def prepare_data(dataset_path="dataset", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
+def prepare_data(dataset_path="dataset", train_csv, test_csv):
     """
     Loads the dataset, using CSVs for splitting and labeling, and processes it.
     """
@@ -91,7 +95,7 @@ def prepare_data(dataset_path="dataset", train_csv="utils/peopleDevTrain.csv", t
 
     return (X_train, y_train), (X_test, y_test)
 
-def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
+def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv, test_csv):
     """
     Loads dataset, extracts features, trains an SVM classifier, and saves the model.
     """
