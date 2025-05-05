@@ -81,11 +81,6 @@ def train_face_recognizer(dataset_path, model_path):
     classifier = SVC(kernel="linear", probability=True)
     classifier.fit(X_train, y_train_enc)
 
-    # Predict and evaluate
-    print("Evaluating model...")
-    y_pred = classifier.predict(X_test)
-    evaluate_model(y_test_enc, y_pred)
-
     # Save model
     model_data = {
         "classifier": classifier,
