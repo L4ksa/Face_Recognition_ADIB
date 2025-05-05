@@ -13,6 +13,8 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 
 # File paths (relative to project root, since script is in utils/)
+dataset_path = "dataset"
+base_dir = "dataset\lfw-deepfunneled"
 CSV_TRAIN = os.path.join("utils", "peopleDevTrain.csv")
 CSV_TEST = os.path.join("utils", "peopleDevTest.csv")
 
