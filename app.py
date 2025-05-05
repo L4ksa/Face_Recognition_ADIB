@@ -16,6 +16,15 @@ import zipfile
 import shutil
 import kaggle
 
+# Ensure .kaggle directory exists
+os.makedirs(os.path.expanduser("~/.kaggle"), exist_ok=True)
+
+# Copy kaggle.json from .devcontainer to ~/.kaggle
+shutil.copyfile(".devcontainer/kaggle.json", os.path.expanduser("~/.kaggle/kaggle.json"))
+
+# Set correct permissions (only needed on Unix)
+os.chmod(os.path.expanduser("~/.kaggle/kaggle.json"), 0o600)
+
 # Download and extract LFW dataset from Kaggle
 LFW_ZIP_PATH = os.path.join(tempfile.gettempdir(), "lfw-dataset.zip")
 LFW_EXTRACT_DIR = os.path.join(tempfile.gettempdir(), "lfw-dataset")
