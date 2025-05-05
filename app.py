@@ -5,10 +5,13 @@ import tempfile
 import zipfile
 import streamlit as st
 from deepface import DeepFace
+import face_recognition
+import cv2
+from PIL import Image
 
+# Step 1: Upload ZIP File
 uploaded_zip = st.file_uploader("Upload the LFW Dataset ZIP", type=["zip"])
 
-# Step 1: Handle ZIP Upload and Extraction
 if uploaded_zip is not None:
     # Save the uploaded ZIP to a temporary file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
@@ -74,6 +77,7 @@ if uploaded_zip is not None:
                     img_path = os.path.join(person_dir, image)
                     st.write(f"Processing image: {img_path}")
                     try:
+                        # Generate DeepFace embedding for the image
                         result = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)
                         if result and isinstance(result, list) and "embedding" in result[0]:
                             embedding = result[0]["embedding"]
@@ -88,3 +92,36 @@ if uploaded_zip is not None:
     # Load embeddings for known faces (based on the people in the training set)
     known_embeddings, known_labels = load_known_faces(LFW_DIR, train_people)
     st.write(f"Loaded {len(known_embeddings)} embeddings.")
+    
+    # Step 3: Upload Image and Perform Face Recognition
+    uploaded_image = st.file_uploader("Upload an image for face recognition", type=["jpg", "jpeg", "png"])
+    
+    if uploaded_image is not None:
+        # Open the uploaded image
+        image = Image.open(uploaded_image)
+        image = np.array(image)
+        
+        # Find all face locations and encodings in the uploaded image
+        face_locations = face_recognition.face_locations(image)
+        face_encodings = face_recognition.face_encodings(image, face_locations)
+        
+        # Loop through each face found in the uploaded image
+        for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+            # See if the face is a match for the known faces
+            matches = face_recognition.compare_faces(known_embeddings, face_encoding)
+            name = "Unknown"
+            
+            face_distances = face_recognition.face_distance(known_embeddings, face_encoding)
+            best_match_index = np.argmin(face_distances)
+            if matches[best_match_index]:
+                name = known_labels[best_match_index]
+            
+            # Draw a box around the face
+            cv2.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 2)
+            
+            # Draw a label with a name below the face
+            cv2.rectangle(image, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
+            font = cv2.FONT_HERSHEY_DUPLEX
+            cv2.putText(image, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
+        
+        st.image(image, channels="BGR")
