@@ -87,7 +87,7 @@ if model_ready:
         if len(embeddings) == 0:
             st.warning("No embeddings could be generated.")
             
-    return image_cv
+        return image_cv
 
     # Predict using classifier
     predictions = classifier.predict(embeddings)
