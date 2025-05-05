@@ -12,4 +12,4 @@ tf-keras
 kaggle
 zipfile36
 face_recognition
-dlib
+pickle
