@@ -5,7 +5,6 @@ import tempfile
 import zipfile
 import streamlit as st
 from deepface import DeepFace
-import face_recognition
 import cv2
 from PIL import Image
 
@@ -101,27 +100,14 @@ if uploaded_zip is not None:
         image = Image.open(uploaded_image)
         image = np.array(image)
         
-        # Find all face locations and encodings in the uploaded image
-        face_locations = face_recognition.face_locations(image)
-        face_encodings = face_recognition.face_encodings(image, face_locations)
+        # Perform face detection using DeepFace
+        faces = DeepFace.detectFace(image, detector_backend='opencv')  # Use 'opencv' backend or another
         
         # Loop through each face found in the uploaded image
-        for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-            # See if the face is a match for the known faces
-            matches = face_recognition.compare_faces(known_embeddings, face_encoding)
-            name = "Unknown"
-            
-            face_distances = face_recognition.face_distance(known_embeddings, face_encoding)
-            best_match_index = np.argmin(face_distances)
-            if matches[best_match_index]:
-                name = known_labels[best_match_index]
-            
-            # Draw a box around the face
-            cv2.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 2)
-            
-            # Draw a label with a name below the face
-            cv2.rectangle(image, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
-            font = cv2.FONT_HERSHEY_DUPLEX
-            cv2.putText(image, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
+        for face in faces:
+            # Compare the face embeddings with the known embeddings
+            results = DeepFace.find(img_path=face, db_path=LFW_DIR, model_name="Facenet")
+            if len(results) > 0:
+                st.write(f"Matching Faces: {results}")
         
-        st.image(image, channels="BGR")
+        st.image(image, caption="Uploaded Image", channels="BGR")
