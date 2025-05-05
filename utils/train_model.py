@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 import joblib
 import pandas as pd
 from utils.prepare_lfw_dataset import load_dataset  # Assuming prepare_lfw_dataset.py is in the same directory
+from PIL import Image
 
 def extract_hog_features(images):
     """
