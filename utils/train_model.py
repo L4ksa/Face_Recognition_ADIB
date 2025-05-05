@@ -24,16 +24,19 @@ def load_people_split(csv_path, base_dir):
     df = pd.read_csv(csv_path)
 
     for _, row in df.iterrows():
-        person = row['name'].replace(" ", "_")
-        image_path = os.path.join(base_dir, person, row['images'])
-        if os.path.exists(image_path):
-            try:
-                img = Image.open(image_path).convert("RGB")
-                img = np.array(img)
-                images.append(img)
-                labels.append(person)
-            except Exception as e:
-                print(f"Error loading image {image_path}: {e}")
+        person = row['Name'].replace(" ", "_")
+        num_images = int(row['Images'])
+        for i in range(1, num_images + 1):
+            image_filename = f"{person}_{i:04d}.jpg"
+            image_path = os.path.join(base_dir, person, image_filename)
+            if os.path.exists(image_path):
+                try:
+                    img = Image.open(image_path).convert("RGB")
+                    img = np.array(img)
+                    images.append(img)
+                    labels.append(person)
+                except Exception as e:
+                    print(f"Error loading image {image_path}: {e}")
 
     return images, labels
 
