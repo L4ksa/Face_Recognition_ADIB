@@ -35,7 +35,7 @@ def load_dataset(dataset_path):
 
     return images, labels, target_names
 
-def train_face_recognizer():
+def train_face_recognizer(dataset_path, model_path):
     print("Loading dataset...")
     images, labels, target_names = load_dataset(DATASET_PATH)
     
