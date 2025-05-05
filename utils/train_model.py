@@ -5,6 +5,7 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from deepface import DeepFace
+from PIL import Image
 from utils.prepare_lfw_dataset import load_dataset  # We need to implement this to load images from the saved LFW dataset
 
 # Update the dataset path
