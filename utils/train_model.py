@@ -50,7 +50,7 @@ def train_face_recognizer(dataset_path, model_path):
     for image, label in zip(images, labels):
         try:
             # Detect face using DeepFace (DeepFace will handle face detection and alignment automatically)
-            faces = DeepFace.detectFace(image, detector_backend='opencv', enforce_detection=False)
+            faces = DeepFace.extract_faces(image, detector_backend='opencv', enforce_detection=False)
             
             if len(faces) == 1:  # Only use images with one face
                 # Get the embedding for the face
