@@ -12,9 +12,9 @@ from utils.face_utils import (
 from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 
-# Define the CSV split file locations (assumes they are inside the dataset folder)
-CSV_TRAIN = "peopleDevTrain.csv"
-CSV_TEST = "peopleDevTest.csv"
+# File paths (relative to project root, since script is in utils/)
+CSV_TRAIN = os.path.join("utils", "peopleDevTrain.csv")
+CSV_TEST = os.path.join("utils", "peopleDevTest.csv")
 
 def load_people_split(csv_path, base_dir):
     images = []
@@ -36,21 +36,16 @@ def load_people_split(csv_path, base_dir):
     return images, labels
 
 def train_face_recognizer(dataset_path, model_path):
-    train_csv = os.path.join(dataset_path, CSV_TRAIN)
-    test_csv = os.path.join(dataset_path, CSV_TEST)
-    image_base_path = os.path.join(dataset_path, "lfw-deepfunneled")
-
-    if not os.path.exists(train_csv) or not os.path.exists(test_csv):
-        raise FileNotFoundError("CSV training/testing files not found in dataset directory")
+   if not os.path.exists(CSV_TRAIN) or not os.path.exists(CSV_TEST):
+        raise FileNotFoundError("CSV training/testing files not found in utils/ directory")
 
     print("Loading training and testing sets from CSV...")
-    train_images, train_labels = load_people_split(train_csv, image_base_path)
-    test_images, test_labels = load_people_split(test_csv, image_base_path)
+    train_images, train_labels = load_people_split(CSV_TRAIN, dataset_path)
+    test_images, test_labels = load_people_split(CSV_TEST, dataset_path)
 
     print(f"Loaded {len(train_images)} training images and {len(test_images)} testing images.")
 
-    X_train = []
-    y_train = []
+    X_train, y_train = [], []
     for img, label in zip(train_images, train_labels):
         try:
             embedding = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True)[0]['embedding']
@@ -59,8 +54,7 @@ def train_face_recognizer(dataset_path, model_path):
         except Exception as e:
             print(f"Error processing train image: {e}")
 
-    X_test = []
-    y_test = []
+    X_test, y_test = [], []
     for img, label in zip(test_images, test_labels):
         try:
             embedding = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True)[0]['embedding']
@@ -81,6 +75,11 @@ def train_face_recognizer(dataset_path, model_path):
     classifier = SVC(kernel="linear", probability=True)
     classifier.fit(X_train, y_train_enc)
 
+    # Evaluate
+    print("Evaluating model...")
+    y_pred = classifier.predict(X_test)
+    evaluate_model(y_test_enc, y_pred)
+
     # Save model
     model_data = {
         "classifier": classifier,
@@ -91,6 +90,3 @@ def train_face_recognizer(dataset_path, model_path):
         pickle.dump(model_data, f)
 
     print("Model trained and saved successfully!")
-
-if __name__ == "__main__":
-    train_face_recognizer()
