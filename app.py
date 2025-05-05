@@ -1,3 +1,6 @@
+# 1. Model Development
+
+## Step 1: Import Required Libraries
 import os
 import numpy as np
 import pandas as pd
@@ -9,7 +12,7 @@ from sklearn.model_selection import train_test_split
 import tempfile
 
 # Define path to known faces
-KNOWN_FACES_DIR = "./known_faces"
+KNOWN_FACES_DIR = "C:/Users/adibs/Downloads/face_recognition_app/known_faces"
 
 ## Step 2: Load Dataset (Assume LFW is organized in folders by person name)
 def load_known_faces(base_dir):
@@ -22,9 +25,11 @@ def load_known_faces(base_dir):
         for image in os.listdir(person_dir):
             img_path = os.path.join(person_dir, image)
             try:
-                embedding = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)[0]["embedding"]
-                embeddings.append(embedding)
-                labels.append(person)
+                result = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)
+                if result and isinstance(result, list) and "embedding" in result[0]:
+                    embedding = result[0]["embedding"]
+                    embeddings.append(embedding)
+                    labels.append(person)
             except Exception as e:
                 print(f"Error processing {img_path}: {e}")
     return np.array(embeddings), np.array(labels)
@@ -57,20 +62,22 @@ if uploaded_file is not None:
         temp_img_path = temp_file.name
 
     try:
-        # Generate embedding for uploaded image
-        embedding = DeepFace.represent(img_path=temp_img_path, model_name="Facenet", enforce_detection=False)[0]["embedding"]
-        embedding = np.array(embedding).reshape(1, -1)
+        result = DeepFace.represent(img_path=temp_img_path, model_name="Facenet", enforce_detection=False)
+        if result and isinstance(result, list) and "embedding" in result[0]:
+            embedding = np.array(result[0]["embedding"]).reshape(1, -1)
 
-        # Predict using KNN
-        distances, indices = knn.kneighbors(embedding)
-        threshold = 0.7
+            # Predict using KNN
+            distances, indices = knn.kneighbors(embedding)
+            threshold = 0.7
 
-        st.subheader("Recognition Result")
-        if distances[0][0] < threshold:
-            predicted_identity = knn.classes_[indices[0][0]]
-            st.write(f"Predicted identity: {predicted_identity} (distance: {distances[0][0]:.3f})")
+            st.subheader("Recognition Result")
+            if distances[0][0] < threshold:
+                predicted_identity = knn.classes_[indices[0][0]]
+                st.write(f"Predicted identity: {predicted_identity} (distance: {distances[0][0]:.3f})")
+            else:
+                st.write("No match found (distance too high).")
         else:
-            st.write("No match found (distance too high).")
+            st.write("No face detected or embedding could not be extracted.")
 
     except Exception as e:
         st.error(f"Error: {e}")
@@ -84,15 +91,16 @@ def evaluate_model(test_dir):
         for image in os.listdir(person_dir):
             img_path = os.path.join(person_dir, image)
             try:
-                embedding = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)[0]["embedding"]
-                embedding = np.array(embedding).reshape(1, -1)
-                distances, indices = knn.kneighbors(embedding)
-                if distances[0][0] < 0.7:
-                    prediction = knn.classes_[indices[0][0]]
-                else:
-                    prediction = "unknown"
-                y_true.append(person)
-                y_pred.append(prediction)
+                result = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)
+                if result and isinstance(result, list) and "embedding" in result[0]:
+                    embedding = np.array(result[0]["embedding"]).reshape(1, -1)
+                    distances, indices = knn.kneighbors(embedding)
+                    if distances[0][0] < 0.7:
+                        prediction = knn.classes_[indices[0][0]]
+                    else:
+                        prediction = "unknown"
+                    y_true.append(person)
+                    y_pred.append(prediction)
             except:
                 continue
     return {
