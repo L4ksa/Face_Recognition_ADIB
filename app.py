@@ -6,6 +6,8 @@ import zipfile
 import streamlit as st
 from deepface import DeepFace
 
+uploaded_zip = st.file_uploader("Upload the LFW Dataset ZIP", type=["zip"])
+
 # Step 1: Handle ZIP Upload and Extraction
 if uploaded_zip is not None:
     # Save the uploaded ZIP to a temporary file
