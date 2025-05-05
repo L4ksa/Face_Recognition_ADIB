@@ -4,7 +4,7 @@ import pickle
 from PIL import Image
 from deepface import DeepFace
 from utils.prepare_lfw_dataset import save_lfw_dataset
-from utils.train_model import train_model
+from utils.train_model import train_face_recognizer
 
 st.set_page_config(page_title="Face Recognition System", page_icon=":smiley:")
 st.title("Face Recognition System")
@@ -29,7 +29,7 @@ model_ready = os.path.exists(MODEL_PATH)
 if not model_ready:
     if st.sidebar.button("Train Model"):
         with st.spinner("Training model..."):
-            train_model(DATASET_PATH, MODEL_PATH)
+            train_face_recognizer(DATASET_PATH, MODEL_PATH)
         st.sidebar.success("Model trained and saved.")
         model_ready = True
 else:
