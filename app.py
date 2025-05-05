@@ -5,7 +5,6 @@ import numpy as np
 import cv2
 from PIL import Image
 from deepface import DeepFace
-from deepface.detectors import FaceDetector
 from utils.prepare_lfw_dataset import save_lfw_dataset
 from utils.train_model import train_face_recognizer
 
