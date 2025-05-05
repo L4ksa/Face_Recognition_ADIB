@@ -17,53 +17,36 @@ import shutil
 import streamlit as st
 from PIL import Image
 
-# Set Kaggle environment variables from Streamlit secrets
-os.environ['KAGGLE_USERNAME'] = st.secrets["KAGGLE_USERNAME"]
-os.environ['KAGGLE_KEY'] = st.secrets["KAGGLE_KEY"]
+# Option to upload the dataset manually instead of using Kaggle API
+uploaded_zip = st.file_uploader("Upload the full LFW dataset ZIP (from Kaggle)", type="zip")
 
-import kaggle
+if uploaded_zip is not None:
+    # Save uploaded zip to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
+        tmp.write(uploaded_zip.read())
+        zip_path = tmp.name
 
-# Download and extract LFW dataset from Kaggle
-LFW_ZIP_PATH = os.path.join(tempfile.gettempdir(), "lfw-dataset.zip")
-LFW_EXTRACT_DIR = os.path.join(tempfile.gettempdir(), "lfw-dataset")
+    # Extract the zip
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        extract_dir = os.path.join(tempfile.gettempdir(), "lfw_dataset_extracted")
+        zip_ref.extractall(extract_dir)
 
-if not os.path.exists(LFW_EXTRACT_DIR):
-    kaggle.api.authenticate()
-    kaggle.api.dataset_download_files("jessicali9530/lfw-dataset", path=tempfile.gettempdir(), unzip=True)
+    # Use the extracted folder for known faces
+    KNOWN_FACES_DIR = os.path.join(extract_dir, "lfw")
 
-# Use extracted folder for known faces
-KNOWN_FACES_DIR = os.path.join(LFW_EXTRACT_DIR, "lfw")
+    # Load embeddings and labels
+    known_embeddings, known_labels = load_known_faces(KNOWN_FACES_DIR)
 
-## Step 2: Load Dataset (Assume LFW is organized in folders by person name)
-def load_known_faces(base_dir):
-    embeddings = []
-    labels = []
-    for person in os.listdir(base_dir):
-        person_dir = os.path.join(base_dir, person)
-        if not os.path.isdir(person_dir):
-            continue
-        for image in os.listdir(person_dir):
-            img_path = os.path.join(person_dir, image)
-            try:
-                result = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)
-                if result and isinstance(result, list) and "embedding" in result[0]:
-                    embedding = result[0]["embedding"]
-                    embeddings.append(embedding)
-                    labels.append(person)
-            except Exception as e:
-                print(f"Error processing {img_path}: {e}")
-    return np.array(embeddings), np.array(labels)
-
-# Load embeddings and labels
-known_embeddings, known_labels = load_known_faces(KNOWN_FACES_DIR)
-
-# Train KNN Classifier
-if len(known_embeddings) > 0:
-    X_train, X_test, y_train, y_test = train_test_split(known_embeddings, known_labels, test_size=0.2, random_state=42)
-    knn = KNeighborsClassifier(n_neighbors=3)
-    knn.fit(X_train, y_train)
+    # Train KNN Classifier
+    if len(known_embeddings) > 0:
+        X_train, X_test, y_train, y_test = train_test_split(known_embeddings, known_labels, test_size=0.2, random_state=42)
+        knn = KNeighborsClassifier(n_neighbors=3)
+        knn.fit(X_train, y_train)
+    else:
+        knn = None
 else:
-    knn = None
+    st.warning("Please upload the full LFW zip file from Kaggle to proceed.")
+    st.stop()
 
 # 2. GUI Development (Streamlit)
 
