@@ -1,101 +1,111 @@
 import os
-import cv2
-import pickle
 import numpy as np
-import pandas as pd
-from PIL import Image
-from deepface import DeepFace
-from utils.face_utils import (
-    detect_faces, 
-    get_face_embeddings
-)
 from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report
+from skimage.feature import hog
+from sklearn.model_selection import train_test_split
+import joblib
+import pandas as pd
+from prepare_lfw_dataset import load_dataset  # Assuming prepare_lfw_dataset.py is in the same directory
 
-# File paths (relative to project root, since script is in utils/)
-dataset_path = "dataset"
-base_dir = "dataset\lfw-deepfunneled"
-CSV_TRAIN = os.path.join("utils", "peopleDevTrain.csv")
-CSV_TEST = os.path.join("utils", "peopleDevTest.csv")
+def extract_hog_features(images):
+    """
+    Extracts HOG features from a list of images.
+    """
+    features = []
+    for img in images:
+        # Convert the image to grayscale (if it's colored)
+        if img.ndim == 3:
+            img = np.mean(img, axis=-1)
+        
+        # Extract HOG features
+        fd, _ = hog(img, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualize=True)
+        features.append(fd)
+    return np.array(features)
 
-def load_people_split(csv_path, base_dir):
+def load_csv(csv_path):
+    """
+    Load the CSV file that contains image paths and labels.
+    """
+    df = pd.read_csv(csv_path)
+    return df
+
+def prepare_data(dataset_path="dataset", train_csv="peopleDevTrain.csv", test_csv="peopleDevTest.csv"):
+    """
+    Loads the dataset, using CSVs for splitting and labeling, and processes it.
+    """
+    # Load CSV files for training and testing data
+    train_df = load_csv(train_csv)
+    test_df = load_csv(test_csv)
+
     images = []
     labels = []
-    df = pd.read_csv(csv_path)
+    target_names = []
 
-    for _, row in df.iterrows():
-        person = row['name'].replace(" ", "_")
-        num_images = int(row['images'])
-        for i in range(1, num_images + 1):
-            image_filename = f"{person}_{i:04d}.jpg"
-            image_path = os.path.join(base_dir, person, image_filename)
-            if os.path.exists(image_path):
-                try:
-                    img = Image.open(image_path).convert("RGB")
-                    img = np.array(img)
-                    images.append(img)
-                    labels.append(person)
-                except Exception as e:
-                    print(f"Error loading image {image_path}: {e}")
+    # Process training data
+    for _, row in train_df.iterrows():
+        img_path = os.path.join(dataset_path, row['person'], f"{row['person']}_{row['index']}.jpg")
+        img = Image.open(img_path)
+        img = np.array(img)  # Convert the image to a numpy array
+        images.append(img)
+        labels.append(row['person'])
+        if row['person'] not in target_names:
+            target_names.append(row['person'])
 
-    return images, labels
+    # Process testing data
+    test_images = []
+    test_labels = []
+    for _, row in test_df.iterrows():
+        img_path = os.path.join(dataset_path, row['person'], f"{row['person']}_{row['index']}.jpg")
+        img = Image.open(img_path)
+        img = np.array(img)  # Convert the image to a numpy array
+        test_images.append(img)
+        test_labels.append(row['person'])
 
-def train_face_recognizer(dataset_path, model_path):
-    if not os.path.exists(CSV_TRAIN) or not os.path.exists(CSV_TEST):
-        raise FileNotFoundError("CSV training/testing files not found in utils/ directory")
+    return (images, labels, target_names), (test_images, test_labels)
 
-    print("Loading training and testing sets from CSV...")
-    train_images, train_labels = load_people_split(CSV_TRAIN, dataset_path)
-    test_images, test_labels = load_people_split(CSV_TEST, dataset_path)
+def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv="peopleDevTrain.csv", test_csv="peopleDevTest.csv"):
+    """
+    Loads dataset, extracts features, trains an SVM classifier, and saves the model.
+    """
+    print("Loading dataset...")
+    (images, labels, target_names), (test_images, test_labels) = prepare_data(dataset_path, train_csv, test_csv)
 
-    print(f"Loaded {len(train_images)} training images and {len(test_images)} testing images.")
+    if len(images) == 0:
+        print("No images found in the dataset.")
+        return
+    
+    print(f"Loaded {len(images)} images from {len(target_names)} people for training.")
+    print(f"Loaded {len(test_images)} images from {len(set(test_labels))} people for testing.")
 
-    X_train, y_train = [], []
-    for img, label in zip(train_images, train_labels):
-        try:
-            embedding = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True)[0]['embedding']
-            X_train.append(embedding)
-            y_train.append(label)
-        except Exception as e:
-            print(f"Error processing train image: {e}")
-
-    X_test, y_test = [], []
-    for img, label in zip(test_images, test_labels):
-        try:
-            embedding = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True)[0]['embedding']
-            X_test.append(embedding)
-            y_test.append(label)
-        except Exception as e:
-            print(f"Error processing test image: {e}")
-
-    print(f"Train shape: {len(X_train)}, Test shape: {len(X_test)}")
-
-    # Encode labels
+    # Extract features from the images
+    print("Extracting HOG features from images...")
+    X_train = extract_hog_features(images)
+    X_test = extract_hog_features(test_images)
+    
+    # Encode the labels
     label_encoder = LabelEncoder()
-    y_train_enc = label_encoder.fit_transform(y_train)
-    y_test_enc = label_encoder.transform(y_test)
-
-    # Train classifier
+    y_train = label_encoder.fit_transform(labels)
+    y_test = label_encoder.transform(test_labels)  # Apply the same encoding for test labels
+    
+    # Train the SVM classifier
     print("Training SVM classifier...")
     classifier = SVC(kernel="linear", probability=True)
-    classifier.fit(X_train, y_train_enc)
+    classifier.fit(X_train, y_train)
 
-    # Evaluate
+    # Save the model
+    print(f"Saving model to {model_path}...")
+    joblib.dump({
+        'classifier': classifier,
+        'label_encoder': label_encoder,
+        'target_names': target_names
+    }, model_path)
+
+    # Evaluate the model
     print("Evaluating model...")
     y_pred = classifier.predict(X_test)
-    evaluate_model(y_test_enc, y_pred)
-
-    # Save model
-    model_data = {
-        "classifier": classifier,
-        "label_encoder": label_encoder
-    }
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    with open(model_path, "wb") as f:
-        pickle.dump(model_data, f)
-
-    print("Model trained and saved successfully!")
-
+    print(classification_report(y_test, y_pred, target_names=label_encoder.classes_))
 
 if __name__ == "__main__":
     train_face_recognizer()
