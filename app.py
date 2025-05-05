@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 import tempfile
 
 # Define path to known faces
-KNOWN_FACES_DIR = "C:/Users/adibs/Downloads/face_recognition_app/known_faces"
+KNOWN_FACES_DIR = "./known_faces"
 
 ## Step 2: Load Dataset (Assume LFW is organized in folders by person name)
 def load_known_faces(base_dir):
