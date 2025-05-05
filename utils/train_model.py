@@ -36,7 +36,7 @@ def load_people_split(csv_path, base_dir):
     return images, labels
 
 def train_face_recognizer(dataset_path, model_path):
-   if not os.path.exists(CSV_TRAIN) or not os.path.exists(CSV_TEST):
+    if not os.path.exists(CSV_TRAIN) or not os.path.exists(CSV_TEST):
         raise FileNotFoundError("CSV training/testing files not found in utils/ directory")
 
     print("Loading training and testing sets from CSV...")
@@ -75,6 +75,11 @@ def train_face_recognizer(dataset_path, model_path):
     classifier = SVC(kernel="linear", probability=True)
     classifier.fit(X_train, y_train_enc)
 
+    # Evaluate
+    print("Evaluating model...")
+    y_pred = classifier.predict(X_test)
+    evaluate_model(y_test_enc, y_pred)
+
     # Save model
     model_data = {
         "classifier": classifier,
@@ -85,3 +90,7 @@ def train_face_recognizer(dataset_path, model_path):
         pickle.dump(model_data, f)
 
     print("Model trained and saved successfully!")
+
+
+if __name__ == "__main__":
+    train_face_recognizer()
