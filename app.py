@@ -54,9 +54,17 @@ if uploaded_zip is not None:
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         extract_dir = os.path.join(tempfile.gettempdir(), "lfw_dataset_extracted")
         zip_ref.extractall(extract_dir)
+    
+    # List the extracted files to understand the structure
+    extracted_files = os.listdir(extract_dir)
+    st.write(f"Extracted files: {extracted_files}")
 
-    # Use the extracted folder for known faces
-    KNOWN_FACES_DIR = os.path.join(extract_dir, "lfw")
+    # Dynamically check and set the correct directory based on the extracted structure
+    if "lfw" in extracted_files:
+        KNOWN_FACES_DIR = os.path.join(extract_dir, "lfw")
+    else:
+        st.error("Expected 'lfw' folder not found in extracted files.")
+        st.stop()
 
     # Load embeddings and labels
     known_embeddings, known_labels = load_known_faces(KNOWN_FACES_DIR)
