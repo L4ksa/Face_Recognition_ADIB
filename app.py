@@ -4,6 +4,8 @@ import pandas as pd
 from deepface import DeepFace
 import cv2
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
 import tempfile
 
 # Define path to known faces
@@ -30,6 +32,11 @@ def load_known_faces(base_dir):
 # Load embeddings and labels
 known_embeddings, known_labels = load_known_faces(KNOWN_FACES_DIR)
 
+# Train KNN Classifier
+X_train, X_test, y_train, y_test = train_test_split(known_embeddings, known_labels, test_size=0.2, random_state=42)
+knn = KNeighborsClassifier(n_neighbors=3)
+knn.fit(X_train, y_train)
+
 # 2. GUI Development (Streamlit)
 
 import streamlit as st
@@ -40,36 +47,31 @@ st.write("Upload an image and the system will recognize known faces.")
 
 uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
 
-# Define a threshold for matching (e.g., 0.6)
-THRESHOLD = 0.6
-
 if uploaded_file is not None:
     img = Image.open(uploaded_file)
-    img_array = np.array(img)
-    st.image(img_array, caption='Uploaded Image', use_column_width=True)
+    st.image(img, caption='Uploaded Image', use_column_width=True)
+
+    # Save uploaded image to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+        img.save(temp_file.name)
+        temp_img_path = temp_file.name
 
     try:
-        # Recognize faces
-        results = DeepFace.find(img_path=img_array, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
+        # Generate embedding for uploaded image
+        embedding = DeepFace.represent(img_path=temp_img_path, model_name="Facenet", enforce_detection=False)[0]["embedding"]
+        embedding = np.array(embedding).reshape(1, -1)
 
-        # Display results with distance filtering
-        st.subheader("Recognition Results")
-        
-        if results:
-            matches = results[0]  # The first element contains the DataFrame of matches
-            filtered_matches = matches[matches['distance'] < THRESHOLD]
+        # Predict using KNN
+        distances, indices = knn.kneighbors(embedding)
+        threshold = 0.7
 
-            # Limit to top 5 closest matches
-            top_matches = filtered_matches.sort_values(by='distance').head(5)
-
-            if not top_matches.empty:
-                for i, res in top_matches.iterrows():
-                    st.write(f"Match {i+1}: {res['identity']} with distance {round(res['distance'], 3)}")
-            else:
-                st.write("No known faces detected within the threshold.")
+        st.subheader("Recognition Result")
+        if distances[0][0] < threshold:
+            predicted_identity = knn.classes_[indices[0][0]]
+            st.write(f"Predicted identity: {predicted_identity} (distance: {distances[0][0]:.3f})")
         else:
-            st.write("No faces found in the uploaded image.")
-        
+            st.write("No match found (distance too high).")
+
     except Exception as e:
         st.error(f"Error: {e}")
 
@@ -82,8 +84,13 @@ def evaluate_model(test_dir):
         for image in os.listdir(person_dir):
             img_path = os.path.join(person_dir, image)
             try:
-                df = DeepFace.find(img_path=img_path, db_path=KNOWN_FACES_DIR, model_name="Facenet", enforce_detection=False)
-                prediction = os.path.basename(df[0].iloc[0]['identity']) if not df[0].empty else "unknown"
+                embedding = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)[0]["embedding"]
+                embedding = np.array(embedding).reshape(1, -1)
+                distances, indices = knn.kneighbors(embedding)
+                if distances[0][0] < 0.7:
+                    prediction = knn.classes_[indices[0][0]]
+                else:
+                    prediction = "unknown"
                 y_true.append(person)
                 y_pred.append(prediction)
             except:
