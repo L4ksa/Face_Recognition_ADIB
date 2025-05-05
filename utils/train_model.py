@@ -63,6 +63,19 @@ def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
     if len(X_train) == 0:
         raise ValueError("No training data found. Check CSV paths and dataset folder.")
 
+    # Keep only test samples that exist in training labels
+    valid_labels = set(y_train)
+    filtered_test = [(img, label) for img, label in zip(X_test, y_test) if label in valid_labels]
+    
+    # Unzip filtered test data
+    if filtered_test:
+        X_test, y_test = zip(*filtered_test)
+        X_test = list(X_test)
+        y_test = list(y_test)
+    else:
+        X_test, y_test = [], []
+        print("Warning: No valid test data after filtering!")
+
     print("\nEncoding labels...")
     le = LabelEncoder()
     y_train_enc = le.fit_transform(y_train)
