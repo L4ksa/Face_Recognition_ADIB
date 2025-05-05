@@ -33,6 +33,17 @@ def load_csv(csv_path):
     df = pd.read_csv(csv_path)
     return df
 
+def print_dataset_structure(dataset_path):
+    print(f"\n📂 Current structure of '{dataset_path}':")
+    for root, dirs, files in os.walk(dataset_path):
+        level = root.replace(dataset_path, '').count(os.sep)
+        indent = ' ' * 4 * level
+        print(f"{indent}{os.path.basename(root)}/")
+        subindent = ' ' * 4 * (level + 1)
+        for f in files:
+            print(f"{subindent}{f}")
+    print()  # Blank line for readability
+
 def prepare_data(dataset_path="dataset/lfw-deepfunneled/lfw-deepfunneled", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
     """
     Loads the dataset, using CSVs for splitting and labeling, and processes it.
@@ -72,6 +83,9 @@ def train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_
     Loads dataset, extracts features, trains an SVM classifier, and saves the model.
     """
     print("Loading dataset...")
+    # Show dataset folder structure
+    print_dataset_structure(dataset_path)
+    
     (images, labels, target_names), (test_images, test_labels) = prepare_data(dataset_path, train_csv, test_csv)
 
     if len(images) == 0:
