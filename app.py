@@ -87,12 +87,12 @@ if model_ready:
 
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.image(image, caption="Uploaded Image", use_container_width=True)
 
             if st.button("Recognize Faces"):
                 with st.spinner("Recognizing faces..."):
                     result_image = recognize_faces(image)
                     result_image = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
-                    st.image(result_image, caption="Result", use_column_width=True)
+                    st.image(result_image, caption="Result", use_container_width=True)
 else:
     st.warning("Please prepare the dataset and train the model first.")
