@@ -25,7 +25,7 @@ def load_people_split(csv_path, base_dir):
 
     for _, row in df.iterrows():
         person = row['name'].replace(" ", "_")
-        image_path = os.path.join(base_dir, person, row['Image'])
+        image_path = os.path.join(base_dir, person, row['image'])
         if os.path.exists(image_path):
             try:
                 img = Image.open(image_path).convert("RGB")
