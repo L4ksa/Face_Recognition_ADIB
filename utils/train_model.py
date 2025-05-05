@@ -1,4 +1,42 @@
-train_csv = os.path.join(dataset_path, CSV_TRAIN)
+import os
+import cv2
+import pickle
+import numpy as np
+import pandas as pd
+from PIL import Image
+from deepface import DeepFace
+from utils.face_utils import (
+    detect_faces, 
+    get_face_embeddings
+)
+from sklearn.svm import SVC
+from sklearn.preprocessing import LabelEncoder
+
+# Define the CSV split file locations (assumes they are inside the dataset folder)
+CSV_TRAIN = "peopleDevTrain.csv"
+CSV_TEST = "peopleDevTest.csv"
+
+def load_people_split(csv_path, base_dir):
+    images = []
+    labels = []
+    df = pd.read_csv(csv_path)
+
+    for _, row in df.iterrows():
+        person = row['Name'].replace(" ", "_")
+        image_path = os.path.join(base_dir, person, row['Image'])
+        if os.path.exists(image_path):
+            try:
+                img = Image.open(image_path).convert("RGB")
+                img = np.array(img)
+                images.append(img)
+                labels.append(person)
+            except Exception as e:
+                print(f"Error loading image {image_path}: {e}")
+
+    return images, labels
+
+def train_face_recognizer(dataset_path, model_path):
+    train_csv = os.path.join(dataset_path, CSV_TRAIN)
     test_csv = os.path.join(dataset_path, CSV_TEST)
     image_base_path = os.path.join(dataset_path, "lfw-deepfunneled")
 
@@ -58,3 +96,6 @@ train_csv = os.path.join(dataset_path, CSV_TRAIN)
         pickle.dump(model_data, f)
 
     print("Model trained and saved successfully!")
+
+if __name__ == "__main__":
+    train_face_recognizer()
