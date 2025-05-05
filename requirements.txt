@@ -10,3 +10,4 @@ Pillow
 gdown
 tf-keras
 kaggle
+zipfile36
