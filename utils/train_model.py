@@ -7,8 +7,7 @@ from PIL import Image
 from deepface import DeepFace
 from utils.face_utils import (
     detect_faces, 
-    get_face_embeddings, 
-    evaluate_model
+    get_face_embeddings
 )
 from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
@@ -82,11 +81,6 @@ def train_face_recognizer(dataset_path="dataset", model_path="models/face_recogn
     print("Training SVM classifier...")
     classifier = SVC(kernel="linear", probability=True)
     classifier.fit(X_train, y_train_enc)
-
-    # Predict and evaluate
-    print("Evaluating model...")
-    y_pred = classifier.predict(X_test)
-    evaluate_model(y_test_enc, y_pred)
 
     # Save model
     model_data = {
