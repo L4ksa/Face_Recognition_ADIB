@@ -17,6 +17,30 @@ import shutil
 import streamlit as st
 from PIL import Image
 
+# Set Kaggle environment variables from Streamlit secrets
+os.environ['KAGGLE_USERNAME'] = st.secrets["KAGGLE_USERNAME"]
+os.environ['KAGGLE_KEY'] = st.secrets["KAGGLE_KEY"]
+
+# 2. Function to load known faces
+def load_known_faces(base_dir):
+    embeddings = []
+    labels = []
+    for person in os.listdir(base_dir):
+        person_dir = os.path.join(base_dir, person)
+        if not os.path.isdir(person_dir):
+            continue
+        for image in os.listdir(person_dir):
+            img_path = os.path.join(person_dir, image)
+            try:
+                result = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)
+                if result and isinstance(result, list) and "embedding" in result[0]:
+                    embedding = result[0]["embedding"]
+                    embeddings.append(embedding)
+                    labels.append(person)
+            except Exception as e:
+                print(f"Error processing {img_path}: {e}")
+    return np.array(embeddings), np.array(labels)
+
 # Option to upload the dataset manually instead of using Kaggle API
 uploaded_zip = st.file_uploader("Upload the full LFW dataset ZIP (from Kaggle)", type="zip")
 
@@ -48,7 +72,7 @@ else:
     st.warning("Please upload the full LFW zip file from Kaggle to proceed.")
     st.stop()
 
-# 2. GUI Development (Streamlit)
+# 3. GUI Development (Streamlit)
 
 st.title("Face Recognition System")
 st.write("Upload an image and the system will recognize known faces.")
@@ -88,7 +112,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"Error: {e}")
 
-# 3. Model Evaluation - for offline evaluation purposes
+# 4. Model Evaluation - for offline evaluation purposes
 
 def evaluate_model(test_dir):
     y_true, y_pred = [], []
