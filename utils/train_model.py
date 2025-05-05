@@ -44,7 +44,7 @@ def print_dataset_structure(dataset_path):
             print(f"{subindent}{f}")
     print()  # Blank line for readability
 
-def prepare_data(dataset_path="dataset/lfw-deepfunneled/lfw-deepfunneled", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
+def prepare_data(dataset_path="dataset", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv"):
     """
     Loads the dataset, using CSVs for splitting and labeling, and processes it.
     """
