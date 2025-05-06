@@ -50,13 +50,17 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=len(image_paths), desc="🔍 Extracting embeddings")):
         image = cv2.imread(img_path)
         if image is None:
+            print(f"⚠️ Skipped unreadable image: {img_path}")
             continue
 
         embedding = get_face_embeddings(image)
         if embedding is not None:
             X.append(embedding)
             y.append(label)
+        else:
+            print(f"⚠️ No embedding from image: {img_path}")
 
+        # Update progress bar if provided
         if progress_callback:
             progress_callback((i + 1) / len(image_paths))
 
@@ -70,24 +74,22 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
 
-    print("🧬 Reducing dimensionality with PCA...")
     # Reduce dimensionality (ArcFace outputs 512-dim embeddings)
     if X.shape[0] > 100:  # Enough samples for PCA
         pca = PCA(n_components=100)
         X_transformed = pca.fit_transform(X)
-        print("✅ PCA applied (100 components).")
+        print("🧬 PCA applied (100 components).")
     else:
         pca = None
         X_transformed = X
         print("ℹ️ PCA skipped (too few samples).")
 
     # Train SVM classifier
-    print("🤖 Training SVM model...")
     clf = SVC(kernel='linear', probability=True)
     clf.fit(X_transformed, y_encoded)
+    print("🤖 Model training completed.")
 
     # Save model, PCA, and label encoder
-    print(f"✅ Model training completed. Saving model to: {model_path}")
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     joblib.dump({
         'model': clf,
