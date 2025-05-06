@@ -34,30 +34,38 @@ model_ready = os.path.exists(MODEL_PATH)
 if not model_ready:
     if st.sidebar.button("Train Model", disabled=model_ready):
         with st.spinner("Training model..."):
-            train_face_recognizer(
-                dataset_path=DATASET_PATH,
-                model_path=MODEL_PATH
-            )
-        st.sidebar.success("Model trained and saved.")
-        model_ready = True
-        st.cache_resource.clear()
+            try:
+                train_face_recognizer(
+                    dataset_path=DATASET_PATH,
+                    model_path=MODEL_PATH
+                )
+                st.sidebar.success("Model trained and saved.")
+                model_ready = True
+            except Exception as e:
+                st.sidebar.error(f"Error during model training: {e}")
 else:
     st.sidebar.success("Model already trained.")
     if st.sidebar.button("Retrain Model", disabled=not model_ready):
         with st.spinner("Retraining model..."):
-            train_face_recognizer(
-                dataset_path=DATASET_PATH,
-                model_path=MODEL_PATH,
-            )
-        st.sidebar.success("Model retrained and saved.")
-        st.cache_resource.clear()
-        model_ready = True
+            try:
+                train_face_recognizer(
+                    dataset_path=DATASET_PATH,
+                    model_path=MODEL_PATH,
+                )
+                st.sidebar.success("Model retrained and saved.")
+                model_ready = True
+            except Exception as e:
+                st.sidebar.error(f"Error during retraining: {e}")
 
 # Load model function
 @st.cache_resource
 def load_model():
-    model_data = joblib.load(MODEL_PATH)
-    return model_data['model'], model_data['label_encoder'], model_data['pca']
+    try:
+        model_data = joblib.load(MODEL_PATH)
+        return model_data['model'], model_data['label_encoder'], model_data['pca']
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None, None, None
 
 # Load model if available
 if model_ready:
@@ -71,46 +79,44 @@ if model_ready:
         image_cv = np.array(image)
         image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
 
-        gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-        detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+        try:
+            # Use face_utils for face embeddings extraction
+            embeddings = []
+            boxes = []
 
-        if len(detected) == 0:
-            st.warning("No faces detected in the image!")
+            detected_faces = DeepFace.detectFace(image_cv, detector_backend='opencv', enforce_detection=False)
+
+            if detected_faces:
+                for face in detected_faces:
+                    embedding = get_face_embeddings(face)
+                    embeddings.append(embedding)
+                    boxes.append((0, 0, face.shape[1], face.shape[0]))  # Placeholder box, can be refined if needed
+            else:
+                st.warning("No faces detected in the image!")
+                return image_cv
+
+            if not embeddings:
+                st.warning("No face embeddings were extracted.")
+                return image_cv
+
+            # Reduce embeddings dimensions using PCA
+            embeddings_pca = pca.transform(embeddings)
+
+            # Make predictions
+            predictions = classifier.predict(embeddings_pca)
+            probs = classifier.predict_proba(embeddings_pca)
+            top_probs = np.max(probs, axis=1)
+            names = label_encoder.inverse_transform(predictions)
+
+            for (x, y, w, h), name, prob in zip(boxes, names, top_probs):
+                label = f"{name} ({prob:.2f})"
+                cv2.rectangle(image_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(image_cv, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
             return image_cv
-
-        embeddings = []
-        boxes = []
-
-        for (x, y, w, h) in detected:
-            face_img = image_cv[y:y+h, x:x+w]
-            try:
-                # Use face_utils for face embeddings extraction
-                embedding = get_face_embeddings(face_img, model_name="ArcFace")
-                embeddings.append(embedding)
-                boxes.append((x, y, w, h))
-            except Exception:
-                continue  # Skip face if embedding fails
-
-        if not embeddings:
-            st.warning("No face embeddings were extracted.")
+        except Exception as e:
+            st.error(f"Error during face recognition: {e}")
             return image_cv
-
-        # Reduce embeddings dimensions using PCA
-        embeddings_pca = pca.transform(embeddings)
-
-        # Make predictions
-        predictions = classifier.predict(embeddings_pca)
-        probs = classifier.predict_proba(embeddings_pca)
-        top_probs = np.max(probs, axis=1)
-        names = label_encoder.inverse_transform(predictions)
-
-        for (x, y, w, h), name, prob in zip(boxes, names, top_probs):
-            label = f"{name} ({prob:.2f})"
-            cv2.rectangle(image_cv, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            cv2.putText(image_cv, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-
-        return image_cv
 
     if option == "Upload Image":
         uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
