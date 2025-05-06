@@ -70,7 +70,11 @@ def load_model():
 
 # Load model if available
 if model_ready:
-    classifier, label_encoder, pca = load_model()
+    model_result = load_model()
+    if model_result == (None, None, None):
+        st.error("Failed to load model. Please ensure the model is trained and the file is not corrupted.")
+    else:
+        classifier, label_encoder, pca = model_result
 
     # Sidebar Step 3: Face Recognition
     st.sidebar.header("Step 3: Face Recognition")
