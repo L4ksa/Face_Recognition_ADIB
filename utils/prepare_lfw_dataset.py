@@ -3,18 +3,15 @@ import shutil
 import zipfile
 import cv2
 from tqdm import tqdm
-from kaggle.api.kaggle_api_extended import KaggleApi
+import kagglehub  # Make sure to install this: pip install kagglehub
 
-def download_lfw_from_kaggle(kaggle_dataset="jessicali9530/lfw-dataset", download_path="lfw-data"):
+def download_lfw_from_kagglehub(download_path="lfw-data"):
     os.makedirs(download_path, exist_ok=True)
-    
-    api = KaggleApi()
-    api.authenticate()
-    
-    print(f"Downloading LFW dataset from Kaggle ({kaggle_dataset})...")
-    api.dataset_download_files(kaggle_dataset, path=download_path, unzip=False)
 
-    zip_path = os.path.join(download_path, "lfw-dataset.zip")
+    print("Downloading LFW dataset from kagglehub (jessicali9530/lfw-dataset)...")
+    path = kagglehub.dataset_download("jessicali9530/lfw-dataset")  # Downloads and returns path to ZIP
+
+    zip_path = os.path.join(path, "lfw-dataset.zip")
     if os.path.exists(zip_path):
         print("Extracting LFW dataset...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -22,7 +19,7 @@ def download_lfw_from_kaggle(kaggle_dataset="jessicali9530/lfw-dataset", downloa
         print("Extraction complete.")
         os.remove(zip_path)
     else:
-        raise FileNotFoundError("Failed to download LFW dataset.")
+        raise FileNotFoundError("Failed to download LFW dataset via kagglehub.")
 
 def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_cascade_path=None):
     lfw_root = os.path.join(kaggle_download_dir, "lfw")
@@ -63,5 +60,5 @@ def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_
                 break  # Save only the first detected face
 
 if __name__ == "__main__":
-    download_lfw_from_kaggle()
+    download_lfw_from_kagglehub()
     save_lfw_dataset()
