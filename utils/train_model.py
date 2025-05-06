@@ -1,11 +1,12 @@
 import os
 import pandas as pd
 import numpy as np
-from PIL import Image
+from deepface import DeepFace
 from sklearn.preprocessing import LabelEncoder
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 import joblib
+import cv2
 
 def prepare_data(dataset_path, train_csv, test_csv):
     print("\nChecking dataset folder structure...")
@@ -24,8 +25,8 @@ def prepare_data(dataset_path, train_csv, test_csv):
     train_df = pd.read_csv(train_csv)
     test_df = pd.read_csv(test_csv)
 
-    def load_images(df):
-        images, labels = [], []
+    def load_embeddings(df):
+        embeddings, labels = [], []
         for _, row in df.iterrows():
             name = row["name"]  # Already formatted with underscores
             image_count = int(row["images"])
@@ -44,16 +45,21 @@ def prepare_data(dataset_path, train_csv, test_csv):
                     continue
 
                 try:
-                    img = Image.open(img_path).convert("L").resize((100, 100))  # Grayscale + Resize
-                    images.append(np.array(img).flatten())  # Flattened to 1D
+                    img_bgr = cv2.imread(img_path)  # Read image in BGR format
+                    embedding = DeepFace.represent(
+                        img_bgr, 
+                        model_name="VGG-Face", 
+                        enforce_detection=False
+                    )[0]["embedding"]  # Extract embeddings from the image
+                    embeddings.append(embedding)
                     labels.append(name)
                 except Exception as e:
-                    print(f"Error loading image {img_path}: {e}")
+                    print(f"Error extracting embedding from {img_path}: {e}")
 
-        return images, labels
+        return embeddings, labels
 
-    X_train, y_train = load_images(train_df)
-    X_test, y_test = load_images(test_df)
+    X_train, y_train = load_embeddings(train_df)
+    X_test, y_test = load_embeddings(test_df)
 
     print(f"\nLoaded {len(X_train)} training images and {len(X_test)} testing images.")
     return (X_train, y_train), (X_test, y_test)
@@ -66,7 +72,7 @@ def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
 
     # Filter test set to contain only labels seen in training
     valid_labels = set(y_train)
-    filtered_test = [(img, label) for img, label in zip(X_test, y_test) if label in valid_labels]
+    filtered_test = [(emb, label) for emb, label in zip(X_test, y_test) if label in valid_labels]
 
     if filtered_test:
         X_test, y_test = zip(*filtered_test)
