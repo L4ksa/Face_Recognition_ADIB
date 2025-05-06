@@ -8,10 +8,14 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 from utils.face_utils import get_face_embeddings
 
-
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
-    image_paths, labels = []
+    image_paths = []
+    labels = []
+
+    if not os.path.exists(dataset_path):
+        print(f"Dataset path {dataset_path} does not exist.")
+        return [], []  # Ensure it always returns two values
 
     for person_name in os.listdir(dataset_path):
         person_path = os.path.join(dataset_path, person_name)
@@ -20,11 +24,11 @@ def load_dataset(dataset_path):
 
         for image_name in os.listdir(person_path):
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
-                image_paths.append(os.path.join(person_path, image_name))
+                image_path = os.path.join(person_path, image_name)
+                image_paths.append(image_path)
                 labels.append(person_name)
 
     return image_paths, labels
-
 
 def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     """
