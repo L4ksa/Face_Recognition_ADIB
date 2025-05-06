@@ -63,7 +63,11 @@ def prepare_data(dataset_path, train_csv, test_csv):
     return (X_train, y_train), (X_test, y_test)
 
 def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
-    # Prepare data for training
+    # Ensure the directory exists
+    model_dir = os.path.dirname(model_path)
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)  # Create the directory if it doesn't exist
+
     (X_train, y_train), (X_test, y_test) = prepare_data(dataset_path, train_csv, test_csv)
 
     if len(X_train) == 0:
@@ -79,22 +83,25 @@ def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
         y_test = list(y_test)
     else:
         X_test, y_test = [], []
+        print("Warning: No valid test data after filtering.")
 
-    # Encoding labels
+    print("\nEncoding labels...")
     le = LabelEncoder()
     y_train_enc = le.fit_transform(y_train)
     y_test_enc = le.transform(y_test) if y_test else []
 
-    # Train the SVM classifier
+    print("\nTraining SVM classifier...")
     clf = SVC(kernel="linear", probability=True)
     clf.fit(X_train, y_train_enc)
 
-    # Evaluate on the test set
     if X_test and y_test_enc:
+        print("\nEvaluating model...")
         preds = clf.predict(X_test)
         acc = accuracy_score(y_test_enc, preds)
         print(f"Test Accuracy: {acc:.2f}")
+    else:
+        print("\nNo test evaluation performed due to empty test set.")
 
-    # Save model and label encoder
+    print("\nSaving model...")
     joblib.dump({"model": clf, "label_encoder": le}, model_path)
     print(f"Model saved to {model_path}")
