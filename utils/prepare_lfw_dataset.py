@@ -15,7 +15,7 @@ def save_lfw_dataset(zip_file_path=None, output_dir="dataset", face_cascade_path
         os.remove(zip_file_path)  # Delete the zip file after extraction
 
     # Define the LFW root path after extraction
-    lfw_root = os.path.join(output_dir, "lfw-deepfunneled", "lfw-deepfunneled")
+    lfw_root = os.path.join(output_dir, "archive", "lfw-deepfunneled", "lfw-deepfunneled")
     
     if not os.path.exists(lfw_root):
         raise FileNotFoundError(f"LFW folder not found in '{output_dir}'. Ensure extraction succeeded.")
