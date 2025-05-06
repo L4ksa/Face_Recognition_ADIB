@@ -1,95 +1,102 @@
-import streamlit as st
 import os
-import joblib
-import zipfile
-import cv2
 import numpy as np
-from PIL import Image
-from io import BytesIO
-from utils.train_model import train_face_recognizer
-from utils.prepare_lfw_dataset import prepare_lfw_dataset
-from utils.face_utils import get_face_embeddings, display_sample_faces
+import cv2
+import joblib
+from sklearn.svm import SVC
+from sklearn.preprocessing import LabelEncoder
+from sklearn.decomposition import PCA
+from tqdm import tqdm
+from utils.face_utils import get_face_embeddings
 
-# Streamlit UI setup
-st.title("🧠 Face Recognition App")
-st.sidebar.title("📁 Options")
+def load_dataset(dataset_path):
+    """Load valid image paths and labels from the dataset directory."""
+    image_paths = []
+    labels = []
 
-# Paths
-dataset_path = "dataset/processed"
-extracted_dir = 'dataset/extracted'
-processed_dir = 'dataset/processed'
-model_path = "model/face_recognition_model.pkl"
+    if not os.path.exists(dataset_path):
+        raise ValueError(f"Dataset path {dataset_path} does not exist.")
 
-# ZIP dataset uploader
-st.sidebar.header("STEP 1:")
-uploaded_zip = st.sidebar.file_uploader("Upload ZIP of Dataset", type=["zip"])
-if uploaded_zip is not None:
-    extract_dir = "dataset/extracted"
-    os.makedirs(extract_dir, exist_ok=True)
-    with zipfile.ZipFile(uploaded_zip, "r") as zip_ref:
-        zip_ref.extractall(extract_dir)
-    st.success("✅ Dataset extracted. Ready to train!")
+    for person_name in os.listdir(dataset_path):
+        person_path = os.path.join(dataset_path, person_name)
+        if not os.path.isdir(person_path):
+            continue
 
-# Button to trigger dataset preparation
-st.sidebar.header("STEP 2:")
-if st.sidebar.button('Prepare Dataset'):
-    st.write("🔧 Preparing dataset...")
-    prepare_lfw_dataset(extracted_dir, processed_dir)
+        for image_name in os.listdir(person_path):
+            if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                image_path = os.path.join(person_path, image_name)
+                image = cv2.imread(image_path)
 
-# Model training
-st.sidebar.header("STEP 3:")
-if st.sidebar.button("Train Model"):
-    st.write("🤖 Training model...")
+                if image is not None:
+                    image_paths.append(image_path)
+                    labels.append(person_name)
 
-    # Initialize progress bar
-    progress_bar = st.progress(0)
+    return image_paths, labels
 
-    try:
-        # Pass progress_bar to the training function
-        train_face_recognizer(dataset_path, model_path, progress_callback=st.progress)
-        st.success("🎉 Model trained successfully!")
-    except Exception as e:
-        st.error(f"Training error: {e}")
+def train_face_recognizer(dataset_path, model_path, progress_callback=None):
+    """
+    Train a face recognition model using ArcFace embeddings and SVM.
 
-# Image prediction
-st.sidebar.header("STEP 4:")
-uploaded_image = st.sidebar.file_uploader("Upload Image for Prediction", type=["jpg", "jpeg", "png"])
-if uploaded_image is not None:
-    st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
+    :param dataset_path: Path to processed face images.
+    :param model_path: Path to save trained model.
+    :param progress_callback: Optional callback to update progress bar (value from 0 to 1).
+    """
+    print("📂 Loading dataset...")
+    image_paths, labels = load_dataset(dataset_path)
 
-    # Decode image as NumPy array (OpenCV format)
-    image = Image.open(uploaded_image).convert('RGB')
-    img_np = np.array(image)
-    img_cv2 = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+    if not image_paths:
+        raise ValueError("No valid images found in dataset.")
 
-    # Extract embedding
-    embedding = get_face_embeddings(img_cv2)
+    X, y = [], []
+    total_images = len(image_paths)
 
-    if embedding is not None:
-        st.write("✅ Embedding extracted.")
+    for i, (img_path, label) in enumerate(zip(image_paths, labels)):
+        image = cv2.imread(img_path)
+        if image is None:
+            print(f"⚠️ Skipped unreadable image: {img_path}")
+            continue
 
-        if os.path.exists(model_path):
-            model_data = joblib.load(model_path)
-            clf = model_data['model']
-            pca = model_data['pca']
-            label_encoder = model_data['label_encoder']
-
-            # Apply PCA if available
-            if pca:
-                embedding = pca.transform([embedding])
-            else:
-                embedding = np.array([embedding])
-
-            # Predict
-            prediction = clf.predict(embedding)
-            predicted_label = label_encoder.inverse_transform(prediction)[0]
-            st.success(f"🧠 Predicted: {predicted_label}")
+        embedding = get_face_embeddings(image)
+        if embedding is not None:
+            X.append(embedding)
+            y.append(label)
         else:
-            st.error("⚠️ Trained model not found.")
-    else:
-        st.error("❌ No face detected in image.")
+            print(f"⚠️ No embedding from image: {img_path}")
 
-# Show sample faces
-st.sidebar.header("Optional")
-if st.sidebar.button("Show Sample Faces"):
-    display_sample_faces("dataset/processed")
+        # Update progress
+        if progress_callback:
+            progress_callback((i + 1) / total_images)
+
+    if not X:
+        raise ValueError("No embeddings extracted. Training aborted.")
+
+    X = np.array(X)
+    y = np.array(y)
+
+    # Encode string labels to integers
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y)
+
+    # Reduce dimensionality (ArcFace outputs 512-dim embeddings)
+    if X.shape[0] > 100:  # Enough samples for PCA
+        pca = PCA(n_components=100)
+        X_transformed = pca.fit_transform(X)
+        print("🧬 PCA applied (100 components).")
+    else:
+        pca = None
+        X_transformed = X
+        print("ℹ️ PCA skipped (too few samples).")
+
+    # Train SVM classifier
+    clf = SVC(kernel='linear', probability=True)
+    clf.fit(X_transformed, y_encoded)
+    print("🤖 Model training completed.")
+
+    # Save model, PCA, and label encoder
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    joblib.dump({
+        'model': clf,
+        'pca': pca,
+        'label_encoder': label_encoder
+    }, model_path)
+
+    print(f"✅ Model saved to: {model_path}")
