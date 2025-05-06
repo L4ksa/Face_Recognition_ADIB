@@ -22,7 +22,7 @@ def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
     os.makedirs(processed_dir)
 
     # The lfw-deepfunneled folder should contain person directories
-    lfw_root = os.path.join(extracted_dir, "lfw-deepfunneled", "lfw-deepfunneled")
+    lfw_root = os.path.join(extracted_dir, "lfw-deepfunneled")
     print(f"Processing faces from {lfw_root}...")
 
     # Ensure the lfw-deepfunneled directory exists
