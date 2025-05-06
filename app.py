@@ -37,20 +37,47 @@ if st.sidebar.button('Prepare Dataset'):
     st.write("🔧 Preparing dataset...")
     prepare_lfw_dataset(extracted_dir, processed_dir)
 
-# Model training
 st.sidebar.header("STEP 3:")
-if st.sidebar.button("Train Model"):
-    st.write("🤖 Training model...")
 
-    # Initialize progress bar
+# Track training state in session
+if "is_training" not in st.session_state:
+    st.session_state.is_training = False
+if "train_complete" not in st.session_state:
+    st.session_state.train_complete = False
+
+def start_training():
+    st.session_state.is_training = True
+    st.session_state.train_complete = False
+
+# Button click sets training flag
+if st.sidebar.button("Train Model"):
+    start_training()
+
+# If training has started
+if st.session_state.is_training and not st.session_state.train_complete:
+    st.write("🤖 Training model...")
     progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    import time  # Used to show estimated time remaining
+    start_time = time.time()
 
     try:
-        # Pass progress_bar to the training function
-        train_face_recognizer(dataset_path, model_path, progress_callback=progress_bar.progress)
+        def update_progress(p):
+            elapsed = time.time() - start_time
+            remaining = (elapsed / p - elapsed) if p > 0 else 0
+            progress_bar.progress(p)
+            status_text.text(f"⏱️ Estimated time remaining: {int(remaining)} seconds")
+
+        # Call training function with embedded progress handler
+        train_face_recognizer(dataset_path, model_path, progress_callback=update_progress)
+
         st.success("🎉 Model trained successfully!")
+        st.session_state.train_complete = True
+        st.session_state.is_training = False
     except Exception as e:
         st.error(f"Training error: {e}")
+        st.session_state.is_training = False
 
 # Image prediction
 st.sidebar.header("STEP 4:")
