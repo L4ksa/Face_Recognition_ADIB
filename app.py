@@ -37,12 +37,21 @@ model_ready = os.path.exists(MODEL_PATH)
 
 if not model_ready:
     if st.sidebar.button("Train Model", disabled=model_ready):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         with st.spinner("Training model..."):
             try:
+                def update_progress(progress):
+                    progress_bar.progress(progress)
+                    status_text.text(f"Training Progress: {int(progress * 100)}%")
+
                 train_face_recognizer(
                     dataset_path=DATASET_PATH,
-                    model_path=MODEL_PATH
+                    model_path=MODEL_PATH,
+                    progress_callback=update_progress
                 )
+                progress_bar.empty()
+                status_text.text("Training complete.")
                 st.sidebar.success("Model trained and saved.")
                 model_ready = True
             except Exception as e:
@@ -50,12 +59,21 @@ if not model_ready:
 else:
     st.sidebar.success("Model already trained.")
     if st.sidebar.button("Retrain Model", disabled=not model_ready):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         with st.spinner("Retraining model..."):
             try:
+                def update_progress(progress):
+                    progress_bar.progress(progress)
+                    status_text.text(f"Training Progress: {int(progress * 100)}%")
+
                 train_face_recognizer(
                     dataset_path=DATASET_PATH,
                     model_path=MODEL_PATH,
+                    progress_callback=update_progress
                 )
+                progress_bar.empty()
+                status_text.text("Retraining complete.")
                 st.sidebar.success("Model retrained and saved.")
                 model_ready = True
             except Exception as e:
