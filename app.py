@@ -14,8 +14,10 @@ st.write("Upload an image or train the model using the LFW dataset")
 
 MODEL_PATH = "models/face_recognizer.pkl"
 DATASET_PATH = "dataset"
+TRAIN_CSV = "utils/peopleDevTrain.csv"
+TEST_CSV = "utils/peopleDevTest.csv"
 
-# Sidebar with dataset preparation
+# Sidebar - Step 1: Prepare Dataset
 st.sidebar.header("Step 1: Prepare Dataset")
 if not os.path.exists(DATASET_PATH):
     if st.sidebar.button("Download LFW Dataset"):
@@ -25,85 +27,88 @@ if not os.path.exists(DATASET_PATH):
 else:
     st.sidebar.success("LFW dataset already available.")
 
-# Step 2: Train model if not present
+# Sidebar - Step 2: Train Model
 st.sidebar.header("Step 2: Train Model")
 model_ready = os.path.exists(MODEL_PATH)
 if not model_ready:
     if st.sidebar.button("Train Model"):
         with st.spinner("Training model..."):
-            train_face_recognizer(dataset_path="dataset", model_path="model.pkl", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv")
+            os.makedirs("models", exist_ok=True)
+            train_face_recognizer(
+                dataset_path=DATASET_PATH,
+                model_path=MODEL_PATH,
+                train_csv=TRAIN_CSV,
+                test_csv=TEST_CSV
+            )
         st.sidebar.success("Model trained and saved.")
         model_ready = True
 else:
     st.sidebar.success("Model already trained.")
 
-# Load model function
+# Function to load the model
 @st.cache_resource
 def load_model():
     with open(MODEL_PATH, "rb") as f:
         model_data = pickle.load(f)
-    return model_data['classifier'], model_data['label_encoder']
+    return model_data["model"], model_data["label_encoder"]
 
+# Recognition logic
+def recognize_faces(image, classifier, label_encoder):
+    image_cv = np.array(image)
+    image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
+
+    gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+
+    if len(detected) == 0:
+        st.warning("No faces detected in the image!")
+        return image_cv
+
+    embeddings = []
+    boxes = []
+
+    for (x, y, w, h) in detected:
+        face_img = image_cv[y:y+h, x:x+w]
+        try:
+            embedding = DeepFace.represent(
+                face_img,
+                model_name="VGG-Face",
+                enforce_detection=False
+            )[0]["embedding"]
+            embeddings.append(embedding)
+            boxes.append((x, y, w, h))
+        except Exception as e:
+            print("Embedding error:", e)
+
+    if not embeddings:
+        st.warning("No face embeddings could be extracted.")
+        return image_cv
+
+    predictions = classifier.predict(embeddings)
+    names = label_encoder.inverse_transform(predictions)
+
+    for (x, y, w, h), name in zip(boxes, names):
+        cv2.rectangle(image_cv, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        cv2.putText(image_cv, name, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+    return image_cv
+
+# Step 3: Face Recognition UI
 if model_ready:
     classifier, label_encoder = load_model()
-
-    # Main interface
     st.sidebar.header("Step 3: Face Recognition")
     option = st.sidebar.radio("Select input type:", ("Upload Image",))
 
-    def recognize_faces(image):
-        # Convert PIL Image to OpenCV format
-        image_cv = np.array(image)
-        image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
-    
-        # Use OpenCV to detect faces
-        gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-        detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-    
-        if len(detected) == 0:
-            st.warning("No faces detected in the image!")
-            return image_cv
-    
-        embeddings = []
-        boxes = []
-    
-        for (x, y, w, h) in detected:
-            face_img = image_cv[y:y+h, x:x+w]
-            try:
-                embedding = DeepFace.represent(
-                    face_img,
-                    model_name="VGG-Face",
-                    enforce_detection=False
-                )[0]["embedding"]
-                embeddings.append(embedding)
-                boxes.append((x, y, w, h))
-            except Exception as e:
-                print("Embedding error:", e)
-    
-        if not embeddings:
-            st.warning("No face embeddings were extracted.")
-            return image_cv
-
-        predictions = classifier.predict(embeddings)
-        names = label_encoder.inverse_transform(predictions)
-    
-        for (x, y, w, h), name in zip(boxes, names):
-            cv2.rectangle(image_cv, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            cv2.putText(image_cv, name, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-    
-        return image_cv
-        
     if option == "Upload Image":
         uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", use_container_width=True)
 
             if st.button("Recognize Faces"):
                 with st.spinner("Recognizing faces..."):
-                    result_image = recognize_faces(image)
+                    result_image = recognize_faces(image, classifier, label_encoder)
                     result_image = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
                     st.image(result_image, caption="Result", use_container_width=True)
 else:
