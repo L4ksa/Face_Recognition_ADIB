@@ -1,5 +1,6 @@
 import os
 import cv2
+import shutil
 from tqdm import tqdm
 
 def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
