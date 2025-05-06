@@ -3,6 +3,7 @@ import os
 import pickle
 import numpy as np
 import cv2
+import joblib
 from PIL import Image
 from deepface import DeepFace
 from utils.prepare_lfw_dataset import save_lfw_dataset
@@ -58,8 +59,7 @@ else:
 # Load model function
 @st.cache_resource
 def load_model():
-    with open(MODEL_PATH, "rb") as f:
-        model_data = pickle.load(f)
+    model_data = joblib.load(MODEL_PATH)
     return model_data['model'], model_data['label_encoder']
 
 # Load model if available
