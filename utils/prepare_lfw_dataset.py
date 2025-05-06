@@ -1,54 +1,37 @@
 import os
-import shutil
 import zipfile
+import shutil
 import cv2
 from tqdm import tqdm
 
-
-def extract_uploaded_zip(zip_file, extract_to="uploaded_zips"):
+def save_lfw_dataset(zip_file_path=None, output_dir="dataset", face_cascade_path=None):
     """
-    Save and extract uploaded ZIP file, then return the path to the LFW root folder.
+    Extracts the ZIP file containing the LFW dataset and saves the faces in the output directory.
     """
-    os.makedirs(extract_to, exist_ok=True)
+    if zip_file_path:
+        # Extract the ZIP file
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall(output_dir)
+        os.remove(zip_file_path)  # Delete the zip file after extraction
 
-    zip_path = os.path.join(extract_to, zip_file.name)
-    with open(zip_path, "wb") as f:
-        f.write(zip_file.getbuffer())
-
-    # Extract ZIP file contents
-    try:
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_to)
-    except zipfile.BadZipFile:
-        raise ValueError("The uploaded file is not a valid ZIP archive.")
-
-    os.remove(zip_path)  # Remove the zip after extraction
-
-    # Locate the lfw-deepfunneled path inside the extracted files
-    for root, dirs, files in os.walk(extract_to):
-        if 'lfw-deepfunneled' in dirs:
-            return os.path.join(root, 'lfw-deepfunneled', 'lfw-deepfunneled')
-
-    raise FileNotFoundError("lfw-deepfunneled folder structure not found after extraction.")
-
-
-def save_lfw_dataset(lfw_root, output_dir="dataset", face_cascade_path=None):
-    """
-    Detect faces in extracted images and save them under dataset/[person_name] folders.
-    """
+    # Define the LFW root path after extraction
+    lfw_root = os.path.join(output_dir, "lfw-deepfunneled", "lfw-deepfunneled")
+    
     if not os.path.exists(lfw_root):
-        raise FileNotFoundError(f"Provided LFW root path '{lfw_root}' does not exist.")
-
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    os.makedirs(output_dir)
-
+        raise FileNotFoundError(f"LFW folder not found in '{output_dir}'. Ensure extraction succeeded.")
+    
     # Set the path for the default face cascade if not provided
     if face_cascade_path is None:
         face_cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 
     face_cascade = cv2.CascadeClassifier(face_cascade_path)
 
+    # Create the output directory for processed faces
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    os.makedirs(output_dir)
+
+    # Process each person folder in the extracted LFW dataset
     for person_name in tqdm(os.listdir(lfw_root), desc="Extracting faces"):
         person_dir = os.path.join(lfw_root, person_name)
         if not os.path.isdir(person_dir):
