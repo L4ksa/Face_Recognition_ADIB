@@ -55,7 +55,7 @@ if not model_ready:
                     status_text.text(f"Training Progress: {int(progress * 100)}%")
 
                 train_face_recognizer(
-                    dataset_path=DATASET_PATH,
+                    dataset_path=os.path.join(DATASET_PATH, "processed"),
                     model_path=MODEL_PATH,
                     progress_callback=update_progress
                 )
@@ -77,7 +77,7 @@ else:
                     status_text.text(f"Training Progress: {int(progress * 100)}%")
 
                 train_face_recognizer(
-                    dataset_path=DATASET_PATH,
+                    dataset_path=os.path.join(DATASET_PATH, "processed"),
                     model_path=MODEL_PATH,
                     progress_callback=update_progress
                 )
