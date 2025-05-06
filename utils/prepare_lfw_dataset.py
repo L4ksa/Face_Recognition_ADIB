@@ -28,9 +28,12 @@ def prepare_lfw_dataset(extracted_dir, processed_dir):
     total_images = 0
     
     # Iterate through each person's directory inside lfw-deepfunneled
-    for person_name in tqdm(os.listdir(lfw_root), desc="Copying person folders"):
+    person_names = [name for name in os.listdir(lfw_root) 
+                    if os.path.isdir(os.path.join(lfw_root, name))]
+    
+    for person_name in tqdm(person_names, desc="Extracting faces"):
         person_dir = os.path.join(lfw_root, person_name)
-        
+
         if not os.path.isdir(person_dir):
             st.warning(f"⚠️ Skipping non-directory: {person_dir}")
             continue
