@@ -8,6 +8,7 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 import time
 from utils.face_utils import get_face_embeddings
+import streamlit as st
 
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
