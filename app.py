@@ -84,13 +84,12 @@ if model_ready:
             embeddings = []
             boxes = []
 
-            detected_faces = DeepFace.detectFace(image_cv, detector_backend='opencv', enforce_detection=False)
+            aligned_face = DeepFace.detectFace(image_cv, detector_backend='opencv', enforce_detection=False)
 
-            if detected_faces:
-                for face in detected_faces:
-                    embedding = get_face_embeddings(face)
-                    embeddings.append(embedding)
-                    boxes.append((0, 0, face.shape[1], face.shape[0]))  # Placeholder box, can be refined if needed
+            if aligned_face is not None:
+                embedding = get_face_embeddings(aligned_face)
+                embeddings.append(embedding)
+                boxes.append((0, 0, aligned_face.shape[1], aligned_face.shape[0]))
             else:
                 st.warning("No faces detected in the image!")
                 return image_cv
