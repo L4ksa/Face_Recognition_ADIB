@@ -80,50 +80,50 @@ if model_ready:
     option = st.sidebar.radio("Select input type:", ("Upload Image",))
 
     def recognize_faces(image):
-    image_cv = np.array(image)
-    image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
-
-    try:
-        # Use face_utils for face embeddings extraction
-        embeddings = []
-        boxes = []
-
-        # Detect the face in the image
-        aligned_face = DeepFace.detectFace(image_cv, detector_backend='opencv', enforce_detection=False)
-
-        if aligned_face is not None:
-            # Extract embeddings for the detected face
-            embedding = get_face_embeddings(aligned_face)  # Get embeddings using your function
-            embeddings.append(embedding)
-            boxes.append((0, 0, aligned_face.shape[1], aligned_face.shape[0]))
-        else:
-            st.warning("No faces detected in the image!")
+        image_cv = np.array(image)
+        image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
+    
+        try:
+            # Use face_utils for face embeddings extraction
+            embeddings = []
+            boxes = []
+    
+            # Detect the face in the image
+            aligned_face = DeepFace.detectFace(image_cv, detector_backend='opencv', enforce_detection=False)
+    
+            if aligned_face is not None:
+                # Extract embeddings for the detected face
+                embedding = get_face_embeddings(aligned_face)  # Get embeddings using your function
+                embeddings.append(embedding)
+                boxes.append((0, 0, aligned_face.shape[1], aligned_face.shape[0]))
+            else:
+                st.warning("No faces detected in the image!")
+                return image_cv
+    
+            if not embeddings:
+                st.warning("No face embeddings were extracted.")
+                return image_cv
+    
+            # Apply PCA transformation on the extracted embeddings
+            embeddings_pca = pca.transform(embeddings)
+    
+            # Make predictions using the trained model
+            predictions = classifier.predict(embeddings_pca)
+            probs = classifier.predict_proba(embeddings_pca)
+            top_probs = np.max(probs, axis=1)
+            names = label_encoder.inverse_transform(predictions)
+    
+            # Draw bounding boxes and labels on the image
+            for (x, y, w, h), name, prob in zip(boxes, names, top_probs):
+                label = f"{name} ({prob:.2f})"
+                cv2.rectangle(image_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(image_cv, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+    
             return image_cv
-
-        if not embeddings:
-            st.warning("No face embeddings were extracted.")
+            
+        except Exception as e:
+            st.error(f"Error during face recognition: {e}")
             return image_cv
-
-        # Apply PCA transformation on the extracted embeddings
-        embeddings_pca = pca.transform(embeddings)
-
-        # Make predictions using the trained model
-        predictions = classifier.predict(embeddings_pca)
-        probs = classifier.predict_proba(embeddings_pca)
-        top_probs = np.max(probs, axis=1)
-        names = label_encoder.inverse_transform(predictions)
-
-        # Draw bounding boxes and labels on the image
-        for (x, y, w, h), name, prob in zip(boxes, names, top_probs):
-            label = f"{name} ({prob:.2f})"
-            cv2.rectangle(image_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(image_cv, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-
-        return image_cv
-        
-    except Exception as e:
-        st.error(f"Error during face recognition: {e}")
-        return image_cv
 
     if option == "Upload Image":
         uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
