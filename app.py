@@ -32,7 +32,7 @@ if uploaded_zip is not None:
     with st.spinner("Processing uploaded dataset..."):
         try:
             # Pass the correct argument name 'zip_file'
-            save_lfw_dataset(zip_file=tmp_zip_path, output_dir=DATASET_PATH)
+            save_lfw_dataset(zip_path=tmp_zip_path, output_dir=DATASET_PATH)
             st.sidebar.success("Dataset uploaded and processed.")
         except Exception as e:
             st.sidebar.error(f"Error during dataset processing: {e}")
