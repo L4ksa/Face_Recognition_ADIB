@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 import numpy as np
 from deepface import DeepFace
 from sklearn.preprocessing import LabelEncoder
@@ -10,15 +9,16 @@ import cv2
 from collections import Counter
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
+from utils.face_utils import get_face_embeddings  # Import from face_utils
 
-# Function to prepare data from the dataset with better embeddings and preprocessing
+# Function to prepare data from the dataset using face_utils
 def prepare_data(dataset_path, model_name="ArcFace"):
     embeddings, labels = [], []
 
     # Loop through all folders in the dataset directory (each folder corresponds to a person)
     for person_name in os.listdir(dataset_path):
         person_dir = os.path.join(dataset_path, person_name)
-        
+
         # Skip if the current directory is not a folder
         if not os.path.isdir(person_dir):
             continue
@@ -26,26 +26,20 @@ def prepare_data(dataset_path, model_name="ArcFace"):
         # Loop through all images for this person
         for img_name in os.listdir(person_dir):
             img_path = os.path.join(person_dir, img_name)
-            
+
             # Skip if it's not an image file (e.g., non-jpg/jpeg/png files)
             if not img_name.endswith(('.jpg', '.jpeg', '.png')):
                 continue
 
             try:
                 img_bgr = cv2.imread(img_path)
-                # Detect and align the face before generating embeddings (optional)
-                img_aligned = DeepFace.detectFace(img_bgr, model_name=model_name)
-
-                # Get the embedding for the current image using DeepFace (using ArcFace by default)
-                embedding = DeepFace.represent(
-                    img_aligned, 
-                    model_name=model_name, 
-                    enforce_detection=False
-                )[0]["embedding"]
-                embeddings.append(embedding)
-                labels.append(person_name)
+                # Get the face embeddings from the face_utils function
+                embedding = get_face_embeddings(img_bgr, model_name=model_name)
+                if embedding is not None:
+                    embeddings.append(embedding)
+                    labels.append(person_name)
             except Exception:
-                # Skip images that raise errors (no logging here to avoid lag)
+                # Skip images that raise errors
                 continue
 
     return embeddings, labels
