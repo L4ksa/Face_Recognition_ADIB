@@ -8,89 +8,85 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 from utils.face_utils import get_face_embeddings
 
-
 def load_dataset(dataset_path):
-    """Load images and labels from dataset directory."""
-    images = []
+    """Load valid image paths and labels from the dataset directory."""
+    image_paths = []
     labels = []
-    
+
     for person_name in os.listdir(dataset_path):
         person_path = os.path.join(dataset_path, person_name)
-        
-        if os.path.isdir(person_path):
-            for image_name in os.listdir(person_path):
-                image_path = os.path.join(person_path, image_name)
-                
-                try:
-                    image = cv2.imread(image_path)
-                    if image is not None:
-                        images.append(image)
-                        labels.append(person_name)
-                except Exception as e:
-                    print(f"Error loading {image_path}: {e}")
-    
-    return images, labels
+        if not os.path.isdir(person_path):
+            continue
 
+        for image_name in os.listdir(person_path):
+            image_path = os.path.join(person_path, image_name)
+            if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                image_paths.append(image_path)
+                labels.append(person_name)
+
+    return image_paths, labels
 
 def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     """
-    Trains the face recognition model with a given dataset and saves the model to the specified path.
+    Trains an SVM face recognition model using embeddings extracted from images.
     
-    :param dataset_path: Path to the directory containing processed images.
-    :param model_path: Path to save the trained model.
-    :param progress_callback: Optional callback to show training progress.
+    :param dataset_path: Path to processed dataset (faces).
+    :param model_path: Where to save the model (joblib file).
+    :param progress_callback: Optional progress bar callback (for Streamlit).
     """
+    print("Loading dataset...")
+    image_paths, labels = load_dataset(dataset_path)
     
-    X = []
-    y = []
-    
-    # Load dataset and check if it's valid
-    images, labels = load_dataset(dataset_path)
-    if not images:
+    if not image_paths:
         raise ValueError("No valid images found in dataset.")
-    
-    print(f"Loaded {len(images)} images from dataset.")
-    
-    total_images = len(images)
-    current = 0
 
-    # Extract embeddings for each image
-    for img, label in tqdm(zip(images, labels), total=total_images, desc="Extracting embeddings"):
+    print(f"Found {len(image_paths)} images across {len(set(labels))} individuals.")
+
+    X, y = [], []
+    for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=len(image_paths), desc="Extracting embeddings")):
         try:
-            embedding = get_face_embeddings(img)
+            image = cv2.imread(img_path)
+            if image is None:
+                print(f"Warning: Failed to load image {img_path}")
+                continue
+
+            embedding = get_face_embeddings(image)
             if embedding is not None:
                 X.append(embedding)
                 y.append(label)
             else:
-                print(f"No embedding found for image: {label}")
+                print(f"Warning: No embedding extracted from {img_path}")
         except Exception as e:
-            print(f"Error processing image: {e}")
-            continue
-        
-        current += 1
+            print(f"Error processing {img_path}: {e}")
+
         if progress_callback:
-            progress_callback(current / total_images)
-    
+            progress_callback((i + 1) / len(image_paths))
+
     if not X:
-        raise ValueError("No valid embeddings found for training.")
-    
-    # Convert to numpy arrays for model training
+        raise ValueError("No valid embeddings extracted from dataset.")
+
+    # Convert to arrays
     X = np.array(X)
     y = np.array(y)
 
-    # Encode labels to numeric values
+    # Encode labels
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
-    
-    # Apply PCA to reduce dimensionality
-    pca = PCA(n_components=100)
-    X_pca = pca.fit_transform(X)
 
-    # Train the model using SVM
+    # Dimensionality reduction (optional)
+    try:
+        pca = PCA(n_components=100)
+        X_pca = pca.fit_transform(X)
+    except ValueError:
+        print("PCA failed (possibly due to too few samples). Skipping PCA.")
+        pca = None
+        X_pca = X
+
+    # Train classifier
     clf = SVC(kernel='linear', probability=True)
     clf.fit(X_pca, y_encoded)
 
-    # Save model components (SVM, label encoder, PCA)
+    # Save model components
     model_data = {
         'model': clf,
         'label_encoder': label_encoder,
@@ -99,4 +95,4 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     joblib.dump(model_data, model_path)
-    print(f"Model trained and saved to: {model_path}")
+    print(f"✅ Model saved to {model_path}")
