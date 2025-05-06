@@ -34,6 +34,9 @@ def save_lfw_dataset(zip_file_path=None, output_dir="dataset", face_cascade_path
     if not os.path.exists(lfw_root):
         # If we can't find it, check if it's one more level deep
         lfw_root = os.path.join(output_dir, "lfw-deepfunneled")
+        
+    # Debug: Print the final lfw_root path
+    print(f"Final LFW root path: {lfw_root}")
 
     if not os.path.exists(lfw_root):
         raise FileNotFoundError(f"LFW folder not found in '{output_dir}'. Ensure extraction succeeded.")
