@@ -46,7 +46,7 @@ if st.sidebar.button("Train Model"):
 
     try:
         # Pass progress_bar to the training function
-        train_face_recognizer(dataset_path, model_path, progress_callback=progress_bar)
+        train_face_recognizer(dataset_path, model_path, progress_callback=st.progress)
         st.success("🎉 Model trained successfully!")
     except Exception as e:
         st.error(f"Training error: {e}")
