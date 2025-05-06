@@ -1,23 +1,45 @@
 import os
 import shutil
-from sklearn.datasets import fetch_lfw_people
-from PIL import Image
-import numpy as np
+import zipfile
 import cv2
 from tqdm import tqdm
+from kaggle.api.kaggle_api_extended import KaggleApi
 
-def save_lfw_dataset(output_dir="dataset", lfw_root="lfw-deepfunneled"):
+def download_lfw_from_kaggle(kaggle_dataset="jessicali9530/lfw-dataset", download_path="lfw-data"):
+    os.makedirs(download_path, exist_ok=True)
+    
+    api = KaggleApi()
+    api.authenticate()
+    
+    print(f"Downloading LFW dataset from Kaggle ({kaggle_dataset})...")
+    api.dataset_download_files(kaggle_dataset, path=download_path, unzip=False)
+
+    zip_path = os.path.join(download_path, "lfw-dataset.zip")
+    if os.path.exists(zip_path):
+        print("Extracting LFW dataset...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(download_path)
+        print("Extraction complete.")
+        os.remove(zip_path)
+    else:
+        raise FileNotFoundError("Failed to download LFW dataset.")
+
+def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_cascade_path=None):
+    lfw_root = os.path.join(kaggle_download_dir, "lfw")
+
     if not os.path.exists(lfw_root):
-        print("Please manually download the LFW dataset and extract it to 'lfw-deepfunneled'")
-        return
+        raise FileNotFoundError(f"LFW folder not found in '{kaggle_download_dir}'. Ensure download succeeded.")
 
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir)
 
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    if face_cascade_path is None:
+        face_cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 
-    for person_name in tqdm(os.listdir(lfw_root), desc="Extracting labeled faces"):
+    face_cascade = cv2.CascadeClassifier(face_cascade_path)
+
+    for person_name in tqdm(os.listdir(lfw_root), desc="Extracting faces"):
         person_dir = os.path.join(lfw_root, person_name)
         if not os.path.isdir(person_dir):
             continue
@@ -38,7 +60,8 @@ def save_lfw_dataset(output_dir="dataset", lfw_root="lfw-deepfunneled"):
                 face = img[y:y+h, x:x+w]
                 save_path = os.path.join(output_person_dir, img_name)
                 cv2.imwrite(save_path, face)
-                break  # one face per image
-    
+                break  # Save only the first detected face
+
 if __name__ == "__main__":
+    download_lfw_from_kaggle()
     save_lfw_dataset()
