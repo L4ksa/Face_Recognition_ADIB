@@ -8,11 +8,25 @@ def save_lfw_dataset(zip_file_path=None, output_dir="dataset", face_cascade_path
     """
     Extracts the ZIP file containing the LFW dataset and saves the faces in the output directory.
     """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)  # Create output_dir if it doesn't exist
+        print(f"Created output directory: {output_dir}")
+
+    # Print directory structure before extraction
+    print("Directory structure before extraction:")
+    for root, dirs, files in os.walk(output_dir):
+        print(f"Root: {root}, Directories: {dirs}, Files: {files}")
+    
     if zip_file_path:
         # Extract the ZIP file
         with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
             zip_ref.extractall(output_dir)
         os.remove(zip_file_path)  # Delete the zip file after extraction
+
+    # Print directory structure after extraction
+    print("Directory structure after extraction:")
+    for root, dirs, files in os.walk(output_dir):
+        print(f"Root: {root}, Directories: {dirs}, Files: {files}")
 
     # Define the LFW root path after extraction (handling nested structure)
     lfw_root = os.path.join(output_dir, "lfw-deepfunneled", "lfw-deepfunneled")
