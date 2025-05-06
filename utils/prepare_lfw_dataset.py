@@ -30,6 +30,8 @@ def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
         print(f"Error: {lfw_root} does not exist!")
         return
     
+    processed_images = []  # To track the number of processed images
+
     for person_name in tqdm(os.listdir(lfw_root), desc="Extracting faces"):
         person_dir = os.path.join(lfw_root, person_name)
         
@@ -62,7 +64,13 @@ def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
                 save_path = os.path.join(output_person_dir, img_name)
                 cv2.imwrite(save_path, face)
                 print(f"Face detected and saved: {img_name} for person {person_name}")
+                processed_images.append(save_path)  # Track processed image
             else:
                 print(f"No face detected in {img_name} for person {person_name}, skipping this image.")
+
+    # Log the processed images count
+    print(f"Total processed images: {len(processed_images)}")
+    if len(processed_images) == 0:
+        print("Warning: No valid images were processed.")
 
     print(f"Dataset processed and saved to: {processed_dir}")
