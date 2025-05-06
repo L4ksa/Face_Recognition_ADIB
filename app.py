@@ -8,7 +8,8 @@ from PIL import Image
 from deepface import DeepFace
 from utils.prepare_lfw_dataset import save_lfw_dataset
 from utils.train_model import train_face_recognizer
-from utils.face_utils import get_face_embeddings  # Import face_utils for face processing
+from utils.face_utils import get_face_embeddings
+import tempfile
 
 st.set_page_config(page_title="Face Recognition System", page_icon=":smiley:")
 st.title("Face Recognition System")
@@ -19,13 +20,16 @@ DATASET_PATH = "dataset"
 
 # Sidebar Step 1: Prepare Dataset
 st.sidebar.header("Step 1: Prepare Dataset")
-if not os.path.exists(DATASET_PATH):
-    if st.sidebar.button("Download LFW Dataset"):
-        with st.spinner("Downloading and preparing dataset..."):
-            save_lfw_dataset(output_dir=DATASET_PATH)
-        st.sidebar.success("LFW dataset ready!")
-else:
-    st.sidebar.success("LFW dataset already available.")
+uploaded_zip = st.sidebar.file_uploader("Upload LFW Dataset ZIP", type="zip")
+
+if uploaded_zip is not None:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_zip:
+        tmp_zip.write(uploaded_zip.getvalue())
+        tmp_zip_path = tmp_zip.name
+
+    with st.spinner("Processing uploaded dataset..."):
+        save_lfw_dataset(zip_file_path=tmp_zip_path, output_dir=DATASET_PATH)
+    st.sidebar.success("Dataset uploaded and processed.")
 
 # Sidebar Step 2: Train Model
 st.sidebar.header("Step 2: Train Model")
@@ -82,45 +86,38 @@ if model_ready:
     def recognize_faces(image):
         image_cv = np.array(image)
         image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2BGR)
-    
+
         try:
-            # Use face_utils for face embeddings extraction
             embeddings = []
             boxes = []
-    
-            # Detect the face in the image
+
             aligned_face = DeepFace.detectFace(image_cv, detector_backend='opencv', enforce_detection=False)
-    
+
             if aligned_face is not None:
-                # Extract embeddings for the detected face
-                embedding = get_face_embeddings(aligned_face)  # Get embeddings using your function
+                embedding = get_face_embeddings(aligned_face)
                 embeddings.append(embedding)
                 boxes.append((0, 0, aligned_face.shape[1], aligned_face.shape[0]))
             else:
                 st.warning("No faces detected in the image!")
                 return image_cv
-    
+
             if not embeddings:
                 st.warning("No face embeddings were extracted.")
                 return image_cv
-    
-            # Apply PCA transformation on the extracted embeddings
+
             embeddings_pca = pca.transform(embeddings)
-    
-            # Make predictions using the trained model
             predictions = classifier.predict(embeddings_pca)
             probs = classifier.predict_proba(embeddings_pca)
             top_probs = np.max(probs, axis=1)
             names = label_encoder.inverse_transform(predictions)
-    
-            # Draw bounding boxes and labels on the image
+
             for (x, y, w, h), name, prob in zip(boxes, names, top_probs):
                 label = f"{name} ({prob:.2f})"
                 cv2.rectangle(image_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 cv2.putText(image_cv, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-    
+
             return image_cv
-            
+
         except Exception as e:
             st.error(f"Error during face recognition: {e}")
             return image_cv
@@ -137,4 +134,4 @@ if model_ready:
                     result_image = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
                     st.image(result_image, caption="Recognition Result", use_container_width=True)
 else:
-    st.warning("Please prepare the dataset and train the model first.")
+    st.warning("Please upload the dataset and train the model first.")
