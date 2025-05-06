@@ -3,32 +3,37 @@ import shutil
 import zipfile
 import cv2
 from tqdm import tqdm
-import kagglehub  # Make sure to install this: pip install kagglehub
 
-def download_lfw_from_kagglehub(download_path="lfw-data"):
-    os.makedirs(download_path, exist_ok=True)
 
-    print("Downloading LFW dataset from kagglehub (jessicali9530/lfw-dataset)...")
-    path = kagglehub.dataset_download("jessicali9530/lfw-dataset")  # Downloads and returns path to ZIP
+def extract_uploaded_zip(zip_file, extract_to="uploaded_zips"):
+    """
+    Save and extract uploaded ZIP file, then return the path to the LFW root folder.
+    """
+    os.makedirs(extract_to, exist_ok=True)
 
-    zip_path = os.path.join(path, "lfw-dataset.zip")
-    if os.path.exists(zip_path):
-        print("Extracting LFW dataset...")
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(download_path)
-        print("Extraction complete.")
-        os.remove(zip_path)
-    else:
-        raise FileNotFoundError("Failed to download LFW dataset via kagglehub.")
+    zip_path = os.path.join(extract_to, zip_file.name)
+    with open(zip_path, "wb") as f:
+        f.write(zip_file.getbuffer())
 
-def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_cascade_path=None):
-    # Search recursively for the correct LFW folder structure
-    for root, dirs, files in os.walk(kaggle_download_dir):
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+
+    os.remove(zip_path)  # Remove the zip after extraction
+
+    # Locate the lfw-deepfunneled path inside
+    for root, dirs, files in os.walk(extract_to):
         if 'lfw-deepfunneled' in dirs:
-            lfw_root = os.path.join(root, 'lfw-deepfunneled', 'lfw-deepfunneled')
-            break
-    else:
-        raise FileNotFoundError(f"LFW folder not found in '{kaggle_download_dir}'. Ensure download succeeded.")
+            return os.path.join(root, 'lfw-deepfunneled', 'lfw-deepfunneled')
+
+    raise FileNotFoundError("lfw-deepfunneled folder structure not found after extraction.")
+
+
+def save_lfw_dataset(lfw_root, output_dir="dataset", face_cascade_path=None):
+    """
+    Detect faces in extracted images and save them under dataset/[person_name] folders.
+    """
+    if not os.path.exists(lfw_root):
+        raise FileNotFoundError(f"Provided LFW root path '{lfw_root}' does not exist.")
 
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
@@ -61,7 +66,3 @@ def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_
                 save_path = os.path.join(output_person_dir, img_name)
                 cv2.imwrite(save_path, face)
                 break  # Save only the first detected face
-                
-if __name__ == "__main__":
-    download_lfw_from_kagglehub()
-    save_lfw_dataset()
