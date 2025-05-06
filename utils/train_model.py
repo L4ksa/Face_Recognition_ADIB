@@ -18,20 +18,18 @@ def prepare_data(dataset_path, model_name="ArcFace"):
     for person_name in os.listdir(dataset_path):
         person_dir = os.path.join(dataset_path, person_name)
 
-        # Skip if the current directory is not a folder
         if not os.path.isdir(person_dir):
             continue
 
         for img_name in os.listdir(person_dir):
             img_path = os.path.join(person_dir, img_name)
 
-            # Skip non-image files
             if not img_name.endswith(('.jpg', '.jpeg', '.png')):
                 continue
 
             try:
                 img_bgr = cv2.imread(img_path)
-                embedding = get_face_embeddings(img_bgr)
+                embedding = get_face_embeddings(img_bgr, model_name=model_name)
                 if embedding:
                     embeddings.append(embedding)
                     labels.append(person_name)
