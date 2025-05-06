@@ -66,7 +66,7 @@ def train_face_recognizer(dataset_path, model_path, model_name="ArcFace"):
 
     # SVM classifier training
     print("Training SVM classifier...")
-    clf = SVC(kernel="rbf", probability=True, C=1.0, gamma='scale')
+    clf = SVC(kernel="rbf", probability=True, C=1.0, gamma='scale', class_weight="balanced")
     clf.fit(X_train, y_train)
 
     # Evaluation
