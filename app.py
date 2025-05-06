@@ -26,10 +26,17 @@ if uploaded_zip is not None:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_zip:
         tmp_zip.write(uploaded_zip.getvalue())
         tmp_zip_path = tmp_zip.name
+        st.sidebar.write(f"Temporary ZIP path: {tmp_zip_path}")  # Debugging line
 
     with st.spinner("Processing uploaded dataset..."):
-        save_lfw_dataset(zip_file_path=tmp_zip_path, output_dir=DATASET_PATH)
-    st.sidebar.success("Dataset uploaded and processed.")
+        try:
+            save_lfw_dataset(zip_file_path=tmp_zip_path, output_dir=DATASET_PATH)
+            st.sidebar.success("Dataset uploaded and processed.")
+        except Exception as e:
+            st.sidebar.error(f"Error during dataset processing: {e}")
+            st.error(f"Detailed Error: {e}")  # Show the detailed error message
+else:
+    st.sidebar.write("No dataset uploaded yet.")
 
 # Sidebar Step 2: Train Model
 st.sidebar.header("Step 2: Train Model")
