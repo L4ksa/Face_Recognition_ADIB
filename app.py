@@ -32,7 +32,7 @@ if uploaded_zip is not None:
 
 # Button to trigger dataset preparation
 st.sidebar.header("STEP 2:")
-if st.button('Prepare Dataset'):
+if st.sidebar.button('Prepare Dataset'):
     st.write("🔧 Preparing dataset...")
     prepare_lfw_dataset(extracted_dir, processed_dir)
 
