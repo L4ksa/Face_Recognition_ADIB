@@ -8,7 +8,6 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 from utils.face_utils import get_face_embeddings
 
-
 def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     X = []
     y = []
@@ -41,6 +40,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
                 if embedding is not None:
                     X.append(embedding)
                     y.append(person)
+                    print(f"Embedding extracted for image: {img_path}")
                 else:
                     print(f"No embedding found for image: {img_path}")
             except Exception as e:
@@ -74,3 +74,4 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     joblib.dump(model_data, model_path)
+    print(f"Model trained and saved to: {model_path}")
