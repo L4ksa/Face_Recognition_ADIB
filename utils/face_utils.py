@@ -20,7 +20,7 @@ def align_face(image):
     aligned_face = DeepFace.detectFace(image, detector_backend='opencv', enforce_detection=False)
     return aligned_face
 
-def get_face_embeddings(face_image, model_name="VGG-Face"):
+def get_face_embeddings(face_image, model_name="ArcFace"):
     """
     Given a cropped face (160x160), return the 128-d face embedding using DeepFace.
     """
