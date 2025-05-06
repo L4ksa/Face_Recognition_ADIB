@@ -1,44 +1,36 @@
 import cv2
+import numpy as np
 from deepface import DeepFace
 
-def align_face(image, detector_backend="opencv"):
-    """
-    Aligns and crops a face from the input image using DeepFace's detector.
-    """
+def get_face_embeddings(img):
     try:
-        aligned_face = DeepFace.detectFace(
-            img_path=image,
-            detector_backend=detector_backend,
-            enforce_detection=True
-        )
-        return aligned_face
-    except Exception as e:
-        print(f"[ERROR] Face alignment failed: {e}")
-        return None
-
-def get_face_embeddings(image, model_name="ArcFace"):
-    """
-    Returns a face embedding vector for a single face image.
-    The face is first aligned using DeepFace's alignment.
-    """
-    try:
-        aligned_face = align_face(image)
-        if aligned_face is None:
-            print("[WARN] No aligned face found.")
-            return None
-
-        embedding = DeepFace.represent(
-            img_path=aligned_face,
-            model_name=model_name,
-            enforce_detection=False
-        )
-
-        if embedding and isinstance(embedding, list) and 'embedding' in embedding[0]:
-            return embedding[0]['embedding']
+        # DeepFace can detect and extract embeddings from faces
+        embeddings = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=False, verbose=False)
+        if embeddings:
+            return embeddings[0]['embedding']
         else:
-            print("[INFO] No embedding extracted.")
             return None
-
     except Exception as e:
-        print(f"[ERROR] Error extracting face embedding: {e}")
+        print(f"Error extracting embeddings: {e}")
         return None
+
+def display_sample_faces(processed_dir):
+    # Pick a random person directory
+    person_dirs = [d for d in os.listdir(processed_dir) if os.path.isdir(os.path.join(processed_dir, d))]
+    if not person_dirs:
+        print("No processed faces found.")
+        return
+
+    # Pick a random image from the person's folder
+    person_dir = random.choice(person_dirs)
+    person_path = os.path.join(processed_dir, person_dir)
+    img_file = random.choice(os.listdir(person_path))
+    img_path = os.path.join(person_path, img_file)
+
+    img = cv2.imread(img_path)
+    if img is None:
+        print(f"Error reading {img_file} for person {person_dir}")
+    else:
+        cv2.imshow(f"Sample face from {person_dir}", img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
