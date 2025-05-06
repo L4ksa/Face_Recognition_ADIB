@@ -15,7 +15,7 @@ def load_dataset(dataset_path):
 
     if not os.path.exists(dataset_path):
         print(f"Dataset path {dataset_path} does not exist.")
-        return [], []  # Ensure it always returns two values
+        return [], []
 
     for person_name in os.listdir(dataset_path):
         person_path = os.path.join(dataset_path, person_name)
@@ -25,8 +25,13 @@ def load_dataset(dataset_path):
         for image_name in os.listdir(person_path):
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 image_path = os.path.join(person_path, image_name)
-                image_paths.append(image_path)
-                labels.append(person_name)
+                image = cv2.imread(image_path)
+
+                if image is None:
+                    print(f"Warning: Failed to read {image_path}")
+                else:
+                    image_paths.append(image_path)
+                    labels.append(person_name)
 
     return image_paths, labels
 
