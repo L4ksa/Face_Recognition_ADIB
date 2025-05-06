@@ -23,6 +23,8 @@ def prepare_lfw_dataset(extracted_dir, processed_dir):
     total_persons = 0
     total_images = 0
 
+    print("📂 Starting to process the dataset...")
+
     # Iterate through subfolders (person directories)
     for person_name in tqdm(os.listdir(lfw_root), desc="Copying folders"):
         person_src_dir = os.path.join(lfw_root, person_name)
@@ -33,10 +35,11 @@ def prepare_lfw_dataset(extracted_dir, processed_dir):
         # Create a destination folder for each person in processed_dir
         person_dst_dir = os.path.join(processed_dir, person_name)
         shutil.copytree(person_src_dir, person_dst_dir)  # Copy the whole folder with images
-        
+
         # Count the images copied
         img_files = [f for f in os.listdir(person_src_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
         total_persons += 1
         total_images += len(img_files)
 
+    print(f"📦 Dataset prepared: {total_persons} persons, {total_images} images copied.")
     st.write(f"📦 Dataset prepared: {total_persons} persons, {total_images} images copied.")
