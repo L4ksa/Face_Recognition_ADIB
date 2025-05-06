@@ -6,4 +6,4 @@ Pillow
 scikit-learn
 tf-keras
 scikit-image
-kaggle
+kagglehub
