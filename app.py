@@ -28,13 +28,15 @@ if uploaded_zip is not None:
         tmp_zip_path = tmp_zip.name
         st.sidebar.write(f"Temporary ZIP path: {tmp_zip_path}")  # Debugging line
 
+    # In app.py, update the call to save_lfw_dataset
     with st.spinner("Processing uploaded dataset..."):
         try:
-            save_lfw_dataset(zip_file_path=tmp_zip_path, output_dir=DATASET_PATH)
+            # Pass the correct argument name 'zip_file'
+            save_lfw_dataset(zip_file=tmp_zip_path, output_dir=DATASET_PATH)
             st.sidebar.success("Dataset uploaded and processed.")
         except Exception as e:
             st.sidebar.error(f"Error during dataset processing: {e}")
-            st.error(f"Detailed Error: {e}")  # Show the detailed error message
+            st.error(f"Detailed Error: {e}")
 else:
     st.sidebar.write("No dataset uploaded yet.")
 
