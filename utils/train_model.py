@@ -38,7 +38,7 @@ def prepare_data(dataset_path, model_name="ArcFace"):
                 embedding = get_face_embeddings(img_bgr, model_name=model_name)
                 if embedding:
                     embeddings.append(embedding)
-                    labels.append(person_name)
+                    labels.append(person_name)  # This will be your label (person_name)
 
             except Exception as e:
                 print(f"Error processing {img_path}: {e}")
@@ -46,14 +46,8 @@ def prepare_data(dataset_path, model_name="ArcFace"):
 
     return embeddings, labels
 
-# Function to train the face recognizer
+# In your training function
 def train_face_recognizer(dataset_path, model_path, model_name="ArcFace"):
-    # Ensure the directory exists for saving the model
-    model_dir = os.path.dirname(model_path)
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
-
-    # Prepare the data (embeddings and labels)
     X, y = prepare_data(dataset_path, model_name=model_name)
 
     if len(X) == 0:
@@ -62,11 +56,11 @@ def train_face_recognizer(dataset_path, model_path, model_name="ArcFace"):
     # Label encoding
     print("Encoding labels...")
     le = LabelEncoder()
-    y_enc = le.fit_transform(y)
+    y_enc = le.fit_transform(y)  # Convert labels to numeric
 
     # PCA dimensionality reduction
     print("Reducing dimensions with PCA...")
-    pca = PCA(n_components=100)
+    pca = PCA(n_components=100)  # You can adjust the number of components here
     X_pca = pca.fit_transform(X)
 
     # Train/test split (80% training, 20% validation)
