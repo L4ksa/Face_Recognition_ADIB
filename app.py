@@ -1,86 +1,62 @@
 import streamlit as st
 import os
 import joblib
-import numpy as np
-import cv2
-from PIL import Image
-from deepface import DeepFace
-from utils.prepare_lfw_dataset import save_lfw_dataset
-from utils.train_model import train_face_recognizer
-from utils.face_utils import get_face_embeddings
-import tempfile
+from sklearn.decomposition import PCA
+from train_model import train_face_recognizer
+from prepare_lfw_dataset import prepare_lfw_dataset
+from utils.face_utils import get_face_embeddings, display_sample_faces
 
-# ---------------------- Configuration ----------------------
-st.set_page_config(page_title="Face Recognition System", page_icon=":smiley:")
-st.title("Face Recognition System")
-st.write("Upload an image or train the model using the LFW dataset.")
+# Streamlit UI setup
+st.title("Face Recognition App")
+st.sidebar.title("Options")
 
-MODEL_PATH = "models/face_recognizer.pkl"
-DATASET_PATH = "dataset"
+dataset_path = "dataset/processed"
+model_path = "model/face_recognition_model.pkl"
 
-# ---------------------- Step 1: Upload Dataset ----------------------
-st.sidebar.header("Step 1: Upload and Process Dataset")
-uploaded_zip = st.sidebar.file_uploader("Upload LFW ZIP", type="zip")
+# Option to train the model
+if st.sidebar.button("Train Model"):
+    # Prepare the dataset
+    st.write("Preparing the LFW dataset...")
+    prepare_lfw_dataset("dataset/extracted", dataset_path)
+    
+    # Train the model
+    st.write("Training the face recognition model...")
+    try:
+        train_face_recognizer(dataset_path, model_path, progress_callback=st.progress)
+        st.success("Model trained successfully!")
+    except Exception as e:
+        st.error(f"Error during model training: {e}")
 
-if uploaded_zip:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_zip:
-        tmp_zip.write(uploaded_zip.getvalue())
-        tmp_zip_path = tmp_zip.name
+# Option to upload image for prediction
+uploaded_image = st.sidebar.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 
-    with st.spinner("Processing dataset..."):
-        try:
-            save_lfw_dataset(zip_path=tmp_zip_path, output_dir=DATASET_PATH)
-            st.sidebar.success("Dataset successfully processed!")
-        except Exception as e:
-            st.sidebar.error("Dataset processing failed.")
-            st.error(f"Error: {e}")
+if uploaded_image is not None:
+    # Display the uploaded image
+    st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
+    
+    # Process the image and get the embedding
+    img = uploaded_image.read()
+    embedding = get_face_embeddings(img)
 
-# ---------------------- Step 2: Train Model ----------------------
-st.sidebar.header("Step 2: Train Model")
+    if embedding is not None:
+        st.write("Face embedding successfully extracted!")
+        # Load the trained model and perform prediction
+        if os.path.exists(model_path):
+            model_data = joblib.load(model_path)
+            pca = model_data['pca']
+            clf = model_data['model']
+            label_encoder = model_data['label_encoder']
 
-model_ready = os.path.exists(MODEL_PATH)
-
-def update_progress_bar(progress_bar, status_text, progress):
-    progress_bar.progress(progress)
-    status_text.text(f"Training Progress: {int(progress * 100)}%")
-
-if not model_ready:
-    if st.sidebar.button("Train Model"):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        try:
-            train_face_recognizer(DATASET_PATH, MODEL_PATH, progress_callback=lambda progress: update_progress_bar(progress_bar, status_text, progress))
-            st.sidebar.success("Model trained successfully!")
-        except Exception as e:
-            st.sidebar.error("Model training failed.")
-            st.error(f"Error: {e}")
-
-# ---------------------- Step 3: Recognize Face ----------------------
-if model_ready:
-    uploaded_image = st.file_uploader("Upload Image for Recognition", type="jpg")
-
-    if uploaded_image:
-        st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
-
-        with st.spinner("Recognizing face..."):
-            try:
-                model_data = joblib.load(MODEL_PATH)
-                img = Image.open(uploaded_image)
-                img = np.array(img.convert("RGB"))
-                embedding = get_face_embeddings(img)
-
-                if embedding is None:
-                    st.error("No face detected!")
-                else:
-                    pca = model_data['pca']
-                    clf = model_data['model']
-                    le = model_data['label_encoder']
-                    
-                    embedding_pca = pca.transform([embedding])
-                    predicted_label = clf.predict(embedding_pca)
-                    predicted_name = le.inverse_transform(predicted_label)[0]
-
-                    st.success(f"Predicted Name: {predicted_name}")
-            except Exception as e:
-                st.error(f"Recognition failed: {e}")
+            # Apply PCA and predict
+            img_pca = pca.transform([embedding])
+            prediction = clf.predict(img_pca)
+            predicted_label = label_encoder.inverse_transform(prediction)[0]
+            st.write(f"Predicted Label: {predicted_label}")
+        else:
+            st.error("Model not found. Please train the model first.")
+    else:
+        st.error("No face detected in the uploaded image.")
+    
+# Display sample faces from processed dataset
+if st.sidebar.button("Show Sample Faces"):
+    display_sample_faces("dataset/processed")
