@@ -24,9 +24,7 @@ def get_face_embeddings(face_image):
     """
     Given a cropped face (160x160), return the 128-d face embedding using DeepFace.
     """
-    # DeepFace generates embeddings
     embedding = DeepFace.represent(face_image, model_name="VGG-Face", enforce_detection=False)
-    
     if embedding:
         return embedding[0]['embedding']
     else:
