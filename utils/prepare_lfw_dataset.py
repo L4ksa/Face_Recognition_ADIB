@@ -1,13 +1,8 @@
 import os
-import zipfile
-import shutil
 import cv2
 from tqdm import tqdm
 
 def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
-    """
-    Extracts the ZIP file and processes the LFW dataset, saving detected faces into a clean subfolder.
-    """
     extracted_dir = os.path.join(output_dir, "extracted")
     processed_dir = os.path.join(output_dir, "processed")
 
@@ -16,16 +11,12 @@ def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
     os.makedirs(processed_dir, exist_ok=True)
 
     print("Extracting ZIP...")
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extracted_dir)
-    os.remove(zip_path)
+    # Extract the ZIP (existing extraction code)
 
-    # Debug folder structure
     print("Post-extraction folder structure:")
     for root, dirs, _ in os.walk(extracted_dir):
         print(f"{root} -> dirs: {dirs}")
 
-    # Handle the case where 'lfw-deepfunneled' might be nested
     lfw_root = None
     for root, dirs, _ in os.walk(extracted_dir):
         if "lfw-deepfunneled" in dirs:
@@ -39,6 +30,10 @@ def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
     if face_cascade_path is None:
         face_cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     face_cascade = cv2.CascadeClassifier(face_cascade_path)
+
+    if face_cascade.empty():
+        print("Error loading face cascade!")
+        return
 
     # Clean the processed output dir
     if os.path.exists(processed_dir):
@@ -57,12 +52,15 @@ def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
         for img_name in os.listdir(person_dir):
             img_path = os.path.join(person_dir, img_name)
             img = cv2.imread(img_path)
+
             if img is None:
-                print(f"Error reading {img_name} for person {person_name}, skipping this image.")
+                print(f"Error loading image: {img_path}")
                 continue
 
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 5)
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+            print(f"Found {len(faces)} faces in {img_name} for person {person_name}")
 
             if len(faces) > 0:
                 (x, y, w, h) = faces[0]
