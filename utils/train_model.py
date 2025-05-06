@@ -24,30 +24,30 @@ def prepare_data(dataset_path, train_csv, test_csv):
     train_df = pd.read_csv(train_csv)
     test_df = pd.read_csv(test_csv)
 
-    def load_images_from_df(df):
+    def load_images_from_df(df, dataset_path="dataset"):
         images = []
         labels = []
         for _, row in df.iterrows():
-            name = row["name"]
+            name = row["name"]  # Already formatted with underscores
             image_count = row["images"]
             person_dir = os.path.join(dataset_path, name)
-
+    
             if not os.path.exists(person_dir):
                 print(f"Warning: {person_dir} not found!")
                 continue
-
+    
             for i in range(int(image_count)):
                 img_filename = f"{name}_{i}.jpg"
                 img_path = os.path.join(person_dir, img_filename)
-
+    
                 if not os.path.exists(img_path):
                     print(f"Warning: Image not found: {img_path}")
                     continue
-
-                img = Image.open(img_path).convert("L").resize((100, 100))  # Grayscale, resize
-                images.append(np.array(img).flatten())  # Flatten image to 1D
+    
+                img = Image.open(img_path).convert("L").resize((100, 100))  # Convert to grayscale and resize
+                images.append(np.array(img).flatten())  # Flatten image to 1D array
                 labels.append(name)
-
+    
         return images, labels
 
     X_train, y_train = load_images_from_df(train_df)
