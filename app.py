@@ -2,86 +2,88 @@ import streamlit as st
 import os
 import joblib
 import zipfile
-import io
-from sklearn.decomposition import PCA
+import cv2
+import numpy as np
+from PIL import Image
+from io import BytesIO
 from utils.train_model import train_face_recognizer
 from utils.prepare_lfw_dataset import prepare_lfw_dataset
 from utils.face_utils import get_face_embeddings, display_sample_faces
 
 # Streamlit UI setup
-st.title("Face Recognition App")
-st.sidebar.title("Options")
+st.title("🧠 Face Recognition App")
+st.sidebar.title("📁 Options")
 
-# Path for processed dataset and model
+# Paths
 dataset_path = "dataset/processed"
 model_path = "model/face_recognition_model.pkl"
 
-# Option to upload a custom dataset (ZIP file)
+# ZIP dataset uploader
 uploaded_zip = st.sidebar.file_uploader("Upload ZIP of Dataset", type=["zip"])
-
 if uploaded_zip is not None:
-    # Extract ZIP file to dataset/extracted
     extract_dir = "dataset/extracted"
-    if not os.path.exists(extract_dir):
-        os.makedirs(extract_dir)
-    
+    os.makedirs(extract_dir, exist_ok=True)
     with zipfile.ZipFile(uploaded_zip, "r") as zip_ref:
         zip_ref.extractall(extract_dir)
-    
-    st.success(f"Dataset uploaded and extracted to {extract_dir}. You can now train the model with this dataset.")
+    st.success("✅ Dataset extracted. Ready to train!")
 
-# Option to train the model on the uploaded dataset
+# Model training
 if st.sidebar.button("Train Model"):
     if uploaded_zip is None:
-        st.error("Please upload a ZIP dataset before training the model.")
+        st.error("Please upload a ZIP dataset first.")
     else:
-        # Prepare the dataset for training
-        st.write("Preparing the dataset for training...")
+        st.write("🔧 Preparing dataset...")
         try:
             prepare_lfw_dataset("dataset/extracted", dataset_path)
-            st.write("Dataset preparation complete.")
+            st.write("✅ Dataset prepared.")
         except Exception as e:
-            st.error(f"Error in dataset preparation: {e}")
+            st.error(f"Dataset prep error: {e}")
             st.stop()
 
-        # Train the face recognition model
-        st.write("Training the face recognition model...")
+        st.write("🤖 Training model...")
         try:
             train_face_recognizer(dataset_path, model_path, progress_callback=st.progress)
-            st.success("Model trained successfully!")
+            st.success("🎉 Model trained successfully!")
         except Exception as e:
-            st.error(f"Error during model training: {e}")
+            st.error(f"Training error: {e}")
 
-# Option to upload image for prediction
-uploaded_image = st.sidebar.file_uploader("Upload Image for Prediction", type=["jpg", "png", "jpeg"])
-
+# Image prediction
+uploaded_image = st.sidebar.file_uploader("Upload Image for Prediction", type=["jpg", "jpeg", "png"])
 if uploaded_image is not None:
-    # Display the uploaded image
     st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
-    
-    # Process the image and get the embedding
-    img = uploaded_image.read()
-    embedding = get_face_embeddings(img)
+
+    # Decode image as NumPy array (OpenCV format)
+    image = Image.open(uploaded_image).convert('RGB')
+    img_np = np.array(image)
+    img_cv2 = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+
+    # Extract embedding
+    embedding = get_face_embeddings(img_cv2)
 
     if embedding is not None:
-        st.write("Face embedding successfully extracted!")
-        # Load the trained model and perform prediction
+        st.write("✅ Embedding extracted.")
+
         if os.path.exists(model_path):
             model_data = joblib.load(model_path)
-            pca = model_data['pca']
             clf = model_data['model']
+            pca = model_data['pca']
             label_encoder = model_data['label_encoder']
 
-            # Apply PCA and predict
-            img_pca = pca.transform([embedding])
-            prediction = clf.predict(img_pca)
-            predicted_label = label_encoder.inverse_transform(prediction)[0]
-            st.write(f"Predicted Label: {predicted_label}")
-        else:
-            st.error("Model not found. Please train the model first.")
-    else:
-        st.error("No face detected in the uploaded image.")
+            # Apply PCA if available
+            if pca:
+                embedding = pca.transform([embedding])
+            else:
+                embedding = np.array([embedding])
 
-# Display sample faces from processed dataset
+            # Predict
+            prediction = clf.predict(embedding)
+            predicted_label = label_encoder.inverse_transform(prediction)[0]
+            st.success(f"🧠 Predicted: {predicted_label}")
+        else:
+            st.error("⚠️ Trained model not found.")
+    else:
+        st.error("❌ No face detected in image.")
+
+# Show sample faces
 if st.sidebar.button("Show Sample Faces"):
     display_sample_faces("dataset/processed")
