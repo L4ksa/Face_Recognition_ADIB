@@ -11,6 +11,10 @@ def prepare_lfw_dataset(extracted_dir, processed_dir):
     print(os.listdir('dataset/extracted/lfw-deepfunneled'))
 
     lfw_root = os.path.join(extracted_dir, "lfw-deepfunneled")
+    if os.path.exists(lfw_root):
+        st.write(f"Files in lfw-deepfunneled: {os.listdir(lfw_root)}")
+    else:
+        st.error(f"The directory {lfw_root} does not exist.")
 
     # Check if lfw-deepfunneled exists
     if not os.path.exists(lfw_root):
