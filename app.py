@@ -35,9 +35,7 @@ if not model_ready:
         with st.spinner("Training model..."):
             train_face_recognizer(
                 dataset_path=DATASET_PATH,
-                model_path=MODEL_PATH,
-                train_csv="utils/peopleDevTrain.csv",
-                test_csv="utils/peopleDevTest.csv"
+                model_path=MODEL_PATH
             )
         st.sidebar.success("Model trained and saved.")
         model_ready = True
@@ -49,8 +47,6 @@ else:
             train_face_recognizer(
                 dataset_path=DATASET_PATH,
                 model_path=MODEL_PATH,
-                train_csv="utils/peopleDevTrain.csv",
-                test_csv="utils/peopleDevTest.csv"
             )
         st.sidebar.success("Model retrained and saved.")
         st.cache_resource.clear()
