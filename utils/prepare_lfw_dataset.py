@@ -1,6 +1,7 @@
 import os
 import shutil
 import streamlit as st
+from tqdm import tqdm
 
 def prepare_lfw_dataset(extracted_dir, processed_dir):
     """
