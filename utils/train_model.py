@@ -31,7 +31,7 @@ def prepare_data(dataset_path, model_name="ArcFace"):
 
             try:
                 img_bgr = cv2.imread(img_path)
-                embedding = get_face_embeddings(img_bgr, model_name=model_name)
+                embedding = get_face_embeddings(img_bgr)
                 if embedding:
                     embeddings.append(embedding)
                     labels.append(person_name)
