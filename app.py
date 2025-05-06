@@ -3,7 +3,7 @@ import os
 import joblib
 from sklearn.decomposition import PCA
 from utils.train_model import train_face_recognizer
-from prepare_lfw_dataset import prepare_lfw_dataset
+from utils.prepare_lfw_dataset import prepare_lfw_dataset
 from utils.face_utils import get_face_embeddings, display_sample_faces
 
 # Streamlit UI setup
