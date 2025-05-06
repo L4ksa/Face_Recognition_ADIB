@@ -14,8 +14,7 @@ def load_dataset(dataset_path):
     labels = []
 
     if not os.path.exists(dataset_path):
-        print(f"Dataset path {dataset_path} does not exist.")
-        return [], []
+        raise ValueError(f"Dataset path {dataset_path} does not exist.")
 
     for person_name in os.listdir(dataset_path):
         person_path = os.path.join(dataset_path, person_name)
@@ -25,12 +24,9 @@ def load_dataset(dataset_path):
         for image_name in os.listdir(person_path):
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 image_path = os.path.join(person_path, image_name)
-                print(f"Reading image from path: {image_path}")
                 image = cv2.imread(image_path)
 
-                if image is None:
-                    print(f"Warning: Failed to read {image_path}")
-                else:
+                if image is not None:
                     image_paths.append(image_path)
                     labels.append(person_name)
 
@@ -56,15 +52,12 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=len(image_paths), desc="🔍 Extracting embeddings")):
         image = cv2.imread(img_path)
         if image is None:
-            print(f"⚠️ Skipped unreadable image: {img_path}")
             continue
 
         embedding = get_face_embeddings(image)
         if embedding is not None:
             X.append(embedding)
             y.append(label)
-        else:
-            print(f"⚠️ No embedding from image: {img_path}")
 
         if progress_callback:
             progress_callback((i + 1) / len(image_paths))
@@ -79,22 +72,24 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
 
+    print("🧬 Reducing dimensionality with PCA...")
     # Reduce dimensionality (ArcFace outputs 512-dim embeddings)
     if X.shape[0] > 100:  # Enough samples for PCA
         pca = PCA(n_components=100)
         X_transformed = pca.fit_transform(X)
-        print("🧬 PCA applied (100 components).")
+        print("✅ PCA applied (100 components).")
     else:
         pca = None
         X_transformed = X
         print("ℹ️ PCA skipped (too few samples).")
 
     # Train SVM classifier
+    print("🤖 Training SVM model...")
     clf = SVC(kernel='linear', probability=True)
     clf.fit(X_transformed, y_encoded)
-    print("🤖 Model training completed.")
 
     # Save model, PCA, and label encoder
+    print(f"✅ Model training completed. Saving model to: {model_path}")
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     joblib.dump({
         'model': clf,
