@@ -25,6 +25,7 @@ def load_dataset(dataset_path):
         for image_name in os.listdir(person_path):
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 image_path = os.path.join(person_path, image_name)
+                print(f"Reading image from path: {image_path}")
                 image = cv2.imread(image_path)
 
                 if image is None:
