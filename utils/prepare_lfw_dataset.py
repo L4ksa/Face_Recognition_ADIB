@@ -58,6 +58,7 @@ def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
             img_path = os.path.join(person_dir, img_name)
             img = cv2.imread(img_path)
             if img is None:
+                print(f"Error reading {img_name} for person {person_name}, skipping this image.")
                 continue
 
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -68,5 +69,8 @@ def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
                 face = img[y:y+h, x:x+w]
                 save_path = os.path.join(output_person_dir, img_name)
                 cv2.imwrite(save_path, face)
+                print(f"Face detected and saved: {img_name} for person {person_name}")
             else:
-                print(f"No face detected in {img_name} for person {person_name}")
+                print(f"No face detected in {img_name} for person {person_name}, skipping this image.")
+
+    print(f"Dataset processed and saved to: {processed_dir}")
