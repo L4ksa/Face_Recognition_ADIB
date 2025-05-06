@@ -9,111 +9,80 @@ import joblib
 import cv2
 from collections import Counter
 
-# Function to prepare data from the dataset
-def prepare_data(dataset_path, train_csv, test_csv):
-    # Load CSV files
-    train_df = pd.read_csv(train_csv)
-    test_df = pd.read_csv(test_csv)
+# Function to prepare data from the dataset (use all images)
+def prepare_data(dataset_path):
+    embeddings, labels = [], []
 
-    def load_embeddings(df):
-        embeddings, labels = [], []
+    # Loop through all folders in the dataset directory (each folder corresponds to a person)
+    for person_name in os.listdir(dataset_path):
+        person_dir = os.path.join(dataset_path, person_name)
+        
+        # Skip if the current directory is not a folder
+        if not os.path.isdir(person_dir):
+            continue
 
-        # Iterate through CSV and process images
-        for _, row in df.iterrows():
-            name = row["name"]
-            image_count = int(row["images"])  
-            person_dir = os.path.join(dataset_path, name)
-
-            # Skip if person's folder does not exist
-            if not os.path.exists(person_dir):
+        # Loop through all images for this person
+        for img_name in os.listdir(person_dir):
+            img_path = os.path.join(person_dir, img_name)
+            
+            # Skip if it's not an image file (e.g., non-jpg/jpeg/png files)
+            if not img_name.endswith(('.jpg', '.jpeg', '.png')):
                 continue
 
-            for i in range(image_count):
-                filename = f"{name}_{i}.jpg"
-                img_path = os.path.join(person_dir, filename)
+            try:
+                img_bgr = cv2.imread(img_path)
+                # Get the embedding for the current image using DeepFace
+                embedding = DeepFace.represent(
+                    img_bgr, 
+                    model_name="VGG-Face", 
+                    enforce_detection=False
+                )[0]["embedding"]
+                embeddings.append(embedding)
+                labels.append(person_name)
+            except Exception:
+                # Skip images that raise errors (no logging here to avoid lag)
+                continue
 
-                # Skip if image does not exist
-                if not os.path.exists(img_path):
-                    continue
+    return embeddings, labels
 
-                try:
-                    img_bgr = cv2.imread(img_path)
-                    embedding = DeepFace.represent(
-                        img_bgr, 
-                        model_name="VGG-Face", 
-                        enforce_detection=False
-                    )[0]["embedding"]
-                    embeddings.append(embedding)
-                    labels.append(name)
-                except Exception:
-                    # Skip images that raise errors (no logging here to avoid lag)
-                    continue
-
-        return embeddings, labels
-
-    # Load training and testing data
-    X_train, y_train = load_embeddings(train_df)
-    X_test, y_test = load_embeddings(test_df)
-
-    return (X_train, y_train), (X_test, y_test)
-
-# Function to train the face recognizer
-def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
+# Function to train the face recognizer using all images
+def train_face_recognizer(dataset_path, model_path):
     # Ensure the directory exists
     model_dir = os.path.dirname(model_path)
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)  # Create the directory if it doesn't exist
 
-    (X_train, y_train), (X_test, y_test) = prepare_data(dataset_path, train_csv, test_csv)
+    # Load all images from the dataset and create embeddings
+    X, y = prepare_data(dataset_path)
 
-    if len(X_train) == 0:
-        raise ValueError("No training data found. Check CSV paths and dataset folder.")
+    if len(X) == 0:
+        raise ValueError("No data found. Check dataset folder.")
 
-    # Log the training label distribution
-    print("\nTraining label distribution:")
-    print(Counter(y_train))
+    # Log the label distribution
+    print("\nLabel distribution:")
+    print(Counter(y))
 
     # Optional: Warn if one class dominates
-    label_counts = Counter(y_train)
+    label_counts = Counter(y)
     most_common = label_counts.most_common(1)[0]
-    if most_common[1] > len(y_train) * 0.5:
-        print(f"⚠️ Warning: '{most_common[0]}' dominates training set with {most_common[1]} samples.")
-
-    # Filter out test samples whose labels are not in the training set
-    train_labels_set = set(y_train)
-    X_test_filtered = []
-    y_test_filtered = []
-
-    for x, y in zip(X_test, y_test):
-        if y in train_labels_set:
-            X_test_filtered.append(x)
-            y_test_filtered.append(y)
-
-    X_test = X_test_filtered
-    y_test = y_test_filtered
+    if most_common[1] > len(y) * 0.5:
+        print(f"⚠️ Warning: '{most_common[0]}' dominates dataset with {most_common[1]} samples.")
 
     # Encode labels
     print("\nEncoding labels...")
     le = LabelEncoder()
-    y_train_enc = le.fit_transform(y_train)
-    y_test_enc = le.transform(y_test) if y_test else []
+    y_enc = le.fit_transform(y)
 
     # Train the SVM classifier
     print("\nTraining SVM classifier...")
     clf = SVC(kernel="linear", probability=True)
-    clf.fit(X_train, y_train_enc)
+    clf.fit(X, y_enc)
 
-    # Evaluate the model on the test set
-    if X_test and y_test_enc:
-        print("\nEvaluating model on test set...")
-        preds = clf.predict(X_test)
-        acc = accuracy_score(y_test_enc, preds)
-        print(f"Test Accuracy: {acc:.2f}")
-    else:
-        print("\nNo valid test set available. Evaluating on training set (not recommended for real validation).")
-        preds = clf.predict(X_train)
-        acc = accuracy_score(y_train_enc, preds)
-        print(f"Training Accuracy: {acc:.2f}")
+    # Evaluate the model on the entire dataset
+    print("\nEvaluating model on the entire dataset...")
+    preds = clf.predict(X)
+    acc = accuracy_score(y_enc, preds)
+    print(f"Accuracy: {acc:.2f}")
 
     # Save the trained model
     print("\nSaving model...")
