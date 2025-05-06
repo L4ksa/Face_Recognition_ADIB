@@ -1,8 +1,9 @@
-# utils/prepare_lfw_dataset.py
-
 import os
-import cv2
 import shutil
+from sklearn.datasets import fetch_lfw_people
+from PIL import Image
+import numpy as np
+import cv2
 from tqdm import tqdm
 
 def save_lfw_dataset(output_dir="dataset", lfw_root="lfw-deepfunneled"):
@@ -38,3 +39,31 @@ def save_lfw_dataset(output_dir="dataset", lfw_root="lfw-deepfunneled"):
                 save_path = os.path.join(output_person_dir, img_name)
                 cv2.imwrite(save_path, face)
                 break  # one face per image
+    
+def load_dataset(dataset_path="dataset"):
+    """
+    Loads the dataset for training by reading images and their corresponding labels
+    from the directory structure.
+    """
+    images = []
+    labels = []
+    target_names = []
+
+    # Iterate through each person's folder
+    for person_name in os.listdir(dataset_path):
+        person_dir = os.path.join(dataset_path, person_name)
+        if os.path.isdir(person_dir):
+            for img_name in os.listdir(person_dir):
+                img_path = os.path.join(person_dir, img_name)
+                if img_path.endswith(".jpg"):  # Ensure we're processing only jpg images
+                    img = Image.open(img_path)
+                    img = np.array(img)  # Convert the image to a numpy array
+                    images.append(img)
+                    labels.append(person_name)
+                    if person_name not in target_names:
+                        target_names.append(person_name)
+
+    return images, labels, target_names
+
+if __name__ == "__main__":
+    save_lfw_dataset()
