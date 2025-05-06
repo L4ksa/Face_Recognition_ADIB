@@ -5,24 +5,34 @@ import numpy as np
 from deepface import DeepFace
 import streamlit as st
 
-def get_face_embeddings(img):
+def get_face_embeddings(img, model_name="ArcFace"):
     """
-    Extract face embeddings from the given image using DeepFace.
+    Extract face embeddings from the given image using DeepFace and ArcFace model.
 
-    :param img: Input image (numpy array).
-    :return: The extracted face embedding or None if extraction fails.
+    :param img: Input image (BGR format from OpenCV).
+    :param model_name: DeepFace model name (default: "ArcFace").
+    :return: The extracted face embedding as a NumPy array, or None if extraction fails.
     """
     try:
-        # DeepFace can detect and extract embeddings from faces
-        embeddings = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=False, verbose=False)
-        
-        # If embeddings are returned, extract the first embedding
-        if embeddings:
-            return embeddings[0]['embedding']
-        else:
-            return None
+        # Convert BGR to RGB for DeepFace
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        embeddings = DeepFace.represent(
+            img_path=img_rgb,
+            model_name=model_name,
+            enforce_detection=True,  # set to False only if dataset is messy
+            detector_backend="opencv",  # can be changed to mtcnn, retinaface, etc.
+            align=True,
+            normalize=True,
+            silent=True
+        )
+
+        if embeddings and isinstance(embeddings, list):
+            return np.array(embeddings[0]['embedding'])
+        return None
+
     except Exception as e:
-        print(f"Error extracting embeddings: {e}")
+        print(f"Error extracting embeddings with ArcFace: {e}")
         return None
 
 def display_sample_faces(processed_dir):
