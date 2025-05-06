@@ -25,7 +25,6 @@ def get_face_embeddings(img, model_name="ArcFace"):
             enforce_detection=True,  # set to False only if dataset is messy
             detector_backend="opencv",  # can be changed to mtcnn, retinaface, etc.
             align=True,
-            normalize=True,
             silent=True
         )
 
