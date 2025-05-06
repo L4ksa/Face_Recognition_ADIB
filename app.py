@@ -3,6 +3,7 @@ import os
 import pickle
 import numpy as np
 import cv2
+import joblib
 from PIL import Image
 from deepface import DeepFace
 from utils.prepare_lfw_dataset import save_lfw_dataset
