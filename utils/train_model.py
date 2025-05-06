@@ -6,7 +6,6 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 import joblib
 import cv2
-from collections import Counter
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from utils.face_utils import get_face_embeddings  # Import from face_utils
@@ -24,15 +23,23 @@ def prepare_data(dataset_path, model_name="ArcFace"):
         for img_name in os.listdir(person_dir):
             img_path = os.path.join(person_dir, img_name)
 
+            # Filter only image files with supported extensions
             if not img_name.endswith(('.jpg', '.jpeg', '.png')):
                 continue
 
             try:
+                # Read image using OpenCV
                 img_bgr = cv2.imread(img_path)
+                if img_bgr is None:
+                    print(f"Error loading image {img_path}")
+                    continue
+
+                # Get face embeddings
                 embedding = get_face_embeddings(img_bgr, model_name=model_name)
                 if embedding:
                     embeddings.append(embedding)
                     labels.append(person_name)
+
             except Exception as e:
                 print(f"Error processing {img_path}: {e}")
                 continue
@@ -41,11 +48,12 @@ def prepare_data(dataset_path, model_name="ArcFace"):
 
 # Function to train the face recognizer
 def train_face_recognizer(dataset_path, model_path, model_name="ArcFace"):
-    # Ensure the directory exists
+    # Ensure the directory exists for saving the model
     model_dir = os.path.dirname(model_path)
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
+    # Prepare the data (embeddings and labels)
     X, y = prepare_data(dataset_path, model_name=model_name)
 
     if len(X) == 0:
@@ -56,15 +64,15 @@ def train_face_recognizer(dataset_path, model_path, model_name="ArcFace"):
     le = LabelEncoder()
     y_enc = le.fit_transform(y)
 
-    # PCA reduction
+    # PCA dimensionality reduction
     print("Reducing dimensions with PCA...")
     pca = PCA(n_components=100)
     X_pca = pca.fit_transform(X)
 
-    # Train/test split
+    # Train/test split (80% training, 20% validation)
     X_train, X_val, y_train, y_val = train_test_split(X_pca, y_enc, test_size=0.2, random_state=42)
 
-    # SVM classifier training
+    # Train SVM classifier
     print("Training SVM classifier...")
     clf = SVC(kernel="rbf", probability=True, C=1.0, gamma='scale', class_weight="balanced")
     clf.fit(X_train, y_train)
@@ -75,7 +83,7 @@ def train_face_recognizer(dataset_path, model_path, model_name="ArcFace"):
     acc = accuracy_score(y_val, preds)
     print(f"Validation Accuracy: {acc:.2f}")
 
-    # Save the model
+    # Save the model, label encoder, and PCA components
     print(f"Saving model to {model_path}...")
     joblib.dump({"model": clf, "label_encoder": le, "pca": pca}, model_path)
     print("Model saved.")
