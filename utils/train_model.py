@@ -51,9 +51,13 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
     X, y = [], []
     total_images = len(image_paths)
-    start_time = time.time()  # Track start time for time estimation
+    
+    # Create a placeholder for displaying the time remaining
+    time_placeholder = st.empty()
 
-    for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=total_images, desc="🔍 Extracting embeddings")):
+    start_time = time.time()  # Record start time
+
+    for i, (img_path, label) in enumerate(zip(image_paths, labels)):
         image = cv2.imread(img_path)
         if image is None:
             print(f"⚠️ Skipped unreadable image: {img_path}")
@@ -74,7 +78,9 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         elapsed_time = time.time() - start_time
         estimated_total_time = elapsed_time / ((i + 1) / total_images) if (i + 1) > 0 else 0
         remaining_time = estimated_total_time - elapsed_time
-        st.write(f"⏱️ Estimated time remaining: {int(remaining_time)} seconds")  # Update this if using Streamlit
+        
+        # Update the time remaining in the same spot using the placeholder
+        time_placeholder.text(f"⏱️ Estimated time remaining: {int(remaining_time)} seconds")
 
     if not X:
         raise ValueError("No embeddings extracted. Training aborted.")
