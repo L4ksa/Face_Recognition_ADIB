@@ -8,10 +8,10 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 from utils.face_utils import get_face_embeddings
 
+
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
-    image_paths = []
-    labels = []
+    image_paths, labels = []
 
     for person_name in os.listdir(dataset_path):
         person_path = os.path.join(dataset_path, person_name)
@@ -19,80 +19,77 @@ def load_dataset(dataset_path):
             continue
 
         for image_name in os.listdir(person_path):
-            image_path = os.path.join(person_path, image_name)
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
-                image_paths.append(image_path)
+                image_paths.append(os.path.join(person_path, image_name))
                 labels.append(person_name)
 
     return image_paths, labels
 
+
 def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     """
-    Trains an SVM face recognition model using embeddings extracted from images.
-    
-    :param dataset_path: Path to processed dataset (faces).
-    :param model_path: Where to save the model (joblib file).
-    :param progress_callback: Optional progress bar callback (for Streamlit).
+    Train a face recognition model using ArcFace embeddings and SVM.
+
+    :param dataset_path: Path to processed face images.
+    :param model_path: Path to save trained model.
+    :param progress_callback: Optional progress bar hook.
     """
-    print("Loading dataset...")
+    print("📂 Loading dataset...")
     image_paths, labels = load_dataset(dataset_path)
-    
+
     if not image_paths:
         raise ValueError("No valid images found in dataset.")
 
-    print(f"Found {len(image_paths)} images across {len(set(labels))} individuals.")
+    print(f"✅ Loaded {len(image_paths)} images from {len(set(labels))} people.")
 
     X, y = [], []
-    for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=len(image_paths), desc="Extracting embeddings")):
-        try:
-            image = cv2.imread(img_path)
-            if image is None:
-                print(f"Warning: Failed to load image {img_path}")
-                continue
+    for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=len(image_paths), desc="🔍 Extracting embeddings")):
+        image = cv2.imread(img_path)
+        if image is None:
+            print(f"⚠️ Skipped unreadable image: {img_path}")
+            continue
 
-            embedding = get_face_embeddings(image)
-            if embedding is not None:
-                X.append(embedding)
-                y.append(label)
-            else:
-                print(f"Warning: No embedding extracted from {img_path}")
-        except Exception as e:
-            print(f"Error processing {img_path}: {e}")
+        embedding = get_face_embeddings(image)
+        if embedding is not None:
+            X.append(embedding)
+            y.append(label)
+        else:
+            print(f"⚠️ No embedding from image: {img_path}")
 
         if progress_callback:
             progress_callback((i + 1) / len(image_paths))
 
     if not X:
-        raise ValueError("No valid embeddings extracted from dataset.")
+        raise ValueError("No embeddings extracted. Training aborted.")
 
-    # Convert to arrays
     X = np.array(X)
     y = np.array(y)
 
-    # Encode labels
+    # Encode string labels to integers
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
 
-    # Dimensionality reduction (optional)
-    try:
+    # Reduce dimensionality (ArcFace outputs 512-dim embeddings)
+    if X.shape[0] > 100:  # Enough samples for PCA
         pca = PCA(n_components=100)
-        X_pca = pca.fit_transform(X)
-    except ValueError:
-        print("PCA failed (possibly due to too few samples). Skipping PCA.")
+        X_transformed = pca.fit_transform(X)
+        print("🧬 PCA applied (100 components).")
+    else:
         pca = None
-        X_pca = X
+        X_transformed = X
+        print("ℹ️ PCA skipped (too few samples).")
 
-    # Train classifier
+    # Train SVM classifier
     clf = SVC(kernel='linear', probability=True)
-    clf.fit(X_pca, y_encoded)
+    clf.fit(X_transformed, y_encoded)
+    print("🤖 Model training completed.")
 
-    # Save model components
-    model_data = {
-        'model': clf,
-        'label_encoder': label_encoder,
-        'pca': pca
-    }
-
+    # Save model, PCA, and label encoder
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    joblib.dump(model_data, model_path)
-    print(f"✅ Model saved to {model_path}")
+    joblib.dump({
+        'model': clf,
+        'pca': pca,
+        'label_encoder': label_encoder
+    }, model_path)
+
+    print(f"✅ Model saved to: {model_path}")
