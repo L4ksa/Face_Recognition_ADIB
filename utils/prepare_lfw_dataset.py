@@ -8,6 +8,8 @@ def prepare_lfw_dataset(extracted_dir, processed_dir):
     Copies each person's folder from 'lfw-deepfunneled' to 'processed_dir'.
     """
     # Path to the lfw-deepfunneled directory
+    print(os.listdir('dataset/extracted/lfw-deepfunneled'))
+
     lfw_root = os.path.join(extracted_dir, "lfw-deepfunneled")
 
     # Check if lfw-deepfunneled exists
