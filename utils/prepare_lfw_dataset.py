@@ -4,21 +4,6 @@ import cv2
 from tqdm import tqdm
 import streamlit as st
 
-def print_directory_structure(root_dir, level=0):
-    """
-    Recursively print the directory structure to help debug folder contents.
-    
-    :param root_dir: Root directory to start printing from.
-    :param level: Current level of recursion.
-    """
-    if not os.path.isdir(root_dir):
-        return
-    for item in os.listdir(root_dir):
-        item_path = os.path.join(root_dir, item)
-        st.write("  " * level + item)
-        if os.path.isdir(item_path):
-            print_directory_structure(item_path, level + 1)
-
 def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
     """
     Prepare the LFW dataset for training by extracting faces from the raw images.
@@ -45,10 +30,6 @@ def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
     if not os.path.exists(lfw_root):
         st.error(f"❌ {lfw_root} does not exist!")
         return
-
-    # Print the full directory structure of lfw-deepfunneled for debugging
-    st.write("📂 Full dataset directory structure:")
-    print_directory_structure(lfw_root)
 
     total_persons = 0
     total_images = 0
