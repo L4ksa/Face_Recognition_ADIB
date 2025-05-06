@@ -3,20 +3,15 @@ import shutil
 import cv2
 from tqdm import tqdm
 import streamlit as st
+from deepface import DeepFace
 
-def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
+def prepare_lfw_dataset(extracted_dir, processed_dir):
     """
-    Prepare the LFW dataset for training by extracting faces from the raw images.
+    Prepare the LFW dataset for training by extracting faces from the raw images using DeepFace.
     
     :param extracted_dir: Path to the extracted dataset (e.g., 'dataset/extracted')
     :param processed_dir: Path to the processed dataset (e.g., 'dataset/processed')
-    :param face_cascade_path: Optional path to the Haar Cascade for face detection.
     """
-    # Load the face cascade for face detection
-    if face_cascade_path is None:
-        face_cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    face_cascade = cv2.CascadeClassifier(face_cascade_path)
-
     # Clean the processed output dir if it exists
     if os.path.exists(processed_dir):
         shutil.rmtree(processed_dir)
@@ -57,25 +52,15 @@ def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
         for img_name in img_files:
             img_path = os.path.join(person_dir, img_name)
 
-            # Read the image
-            img = cv2.imread(img_path)
-            if img is None:
-                st.warning(f"⚠️ Error reading {img_name} for person {person_name}, skipping this image.")
-                continue
-
-            # Convert the image to grayscale for face detection
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 5)
-
-            # If a face is detected, save the cropped face image
-            if len(faces) > 0:
-                (x, y, w, h) = faces[0]
-                face = img[y:y+h, x:x+w]
+            # Read the image using DeepFace
+            try:
+                # DeepFace detectFace automatically detects and crops the face
+                face = DeepFace.detectFace(img_path, detector_backend='opencv')
                 save_path = os.path.join(output_person_dir, img_name)
                 cv2.imwrite(save_path, face)
                 st.write(f"✅ Face detected and saved: {img_name} for person {person_name}")
-            else:
-                st.warning(f"⚠️ No face detected in {img_name} for person {person_name}, skipping this image.")
+            except Exception as e:
+                st.warning(f"⚠️ Error processing {img_name} for person {person_name}: {str(e)}")
     
     st.write(f"✅ Dataset processed and saved to: {processed_dir}")
     st.write(f"🧑‍🤝‍🧑 Total persons processed: {total_persons}")
