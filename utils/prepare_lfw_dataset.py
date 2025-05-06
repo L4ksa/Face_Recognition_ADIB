@@ -4,19 +4,13 @@ import streamlit as st
 from tqdm import tqdm
 
 def prepare_lfw_dataset(extracted_dir, processed_dir):
-    """
-    Prepare the LFW dataset by copying the person directories from the raw dataset.
-    
-    :param extracted_dir: Path to the extracted dataset (e.g., 'dataset/extracted')
-    :param processed_dir: Path to the processed dataset (e.g., 'dataset/processed')
-    """
     # Clean the processed output dir if it exists
     if os.path.exists(processed_dir):
         shutil.rmtree(processed_dir)
     os.makedirs(processed_dir)
 
-    # The lfw-deepfunneled folder should contain person directories (i.e., no top-level folder copy)
-    lfw_root = os.path.join(extracted_dir, "lfw-deepfunneled")
+    # Now extracted_dir is already lfw-deepfunneled
+    lfw_root = extracted_dir
     st.write(f"📂 Processing faces from {lfw_root}...")
 
     # Ensure the lfw-deepfunneled directory exists
@@ -34,10 +28,6 @@ def prepare_lfw_dataset(extracted_dir, processed_dir):
     for person_name in tqdm(person_names, desc="Extracting faces"):
         person_dir = os.path.join(lfw_root, person_name)
 
-        if not os.path.isdir(person_dir):
-            st.warning(f"⚠️ Skipping non-directory: {person_dir}")
-            continue
-        
         # Create an output directory for each person directly in the processed directory
         output_person_dir = os.path.join(processed_dir, person_name)
         os.makedirs(output_person_dir, exist_ok=True)
