@@ -41,6 +41,29 @@ def save_lfw_dataset(zip_file_path=None, output_dir="dataset", face_cascade_path
     if not os.path.exists(lfw_root):
         raise FileNotFoundError(f"LFW folder not found in '{output_dir}'. Ensure extraction succeeded.")
     
+    # Flatten the folder structure if necessary (move files out of nested folders)
+    print("Flattening folder structure...")
+    for subdir, dirs, files in os.walk(lfw_root):
+        for dir_name in dirs:
+            # Check if this is the extra nested 'lfw-deepfunneled' folder
+            nested_dir = os.path.join(subdir, dir_name)
+            if nested_dir.endswith('lfw-deepfunneled'):
+                for person_name in os.listdir(nested_dir):
+                    person_dir = os.path.join(nested_dir, person_name)
+                    if os.path.isdir(person_dir):
+                        # Move all files to the correct location
+                        target_person_dir = os.path.join(lfw_root, person_name)
+                        if not os.path.exists(target_person_dir):
+                            os.makedirs(target_person_dir)
+                        
+                        for img_name in os.listdir(person_dir):
+                            img_path = os.path.join(person_dir, img_name)
+                            target_img_path = os.path.join(target_person_dir, img_name)
+                            shutil.move(img_path, target_img_path)
+                        
+                        # Remove the now empty directory
+                        shutil.rmtree(person_dir)
+    
     # Set the path for the default face cascade if not provided
     if face_cascade_path is None:
         face_cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
