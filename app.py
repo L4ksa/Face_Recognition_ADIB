@@ -48,8 +48,7 @@ else:
 # Function to load the model
 @st.cache_resource
 def load_model():
-    with open(MODEL_PATH, "rb") as f:
-        model_data = pickle.load(f)
+    model_data = joblib.load(MODEL_PATH)
     return model_data["model"], model_data["label_encoder"]
 
 # Recognition logic
