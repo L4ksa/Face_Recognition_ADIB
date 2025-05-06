@@ -29,6 +29,21 @@ def prepare_lfw_dataset(extracted_dir, processed_dir, face_cascade_path=None):
     if not os.path.exists(lfw_root):
         print(f"Error: {lfw_root} does not exist!")
         return
+
+    # Log the directory structure of the extracted dataset
+    print(f"Checking structure of {lfw_root}...")
+    for person_name in os.listdir(lfw_root):
+        person_dir = os.path.join(lfw_root, person_name)
+        if os.path.isdir(person_dir):
+            print(f"Found person folder: {person_name}")
+            # List all images in the folder to ensure they exist
+            images = [f for f in os.listdir(person_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+            if images:
+                print(f"Found {len(images)} images for person {person_name}")
+            else:
+                print(f"No images found for person {person_name}")
+        else:
+            print(f"Skipping non-directory: {person_dir}")
     
     processed_images = []  # To track the number of processed images
 
