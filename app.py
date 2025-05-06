@@ -19,7 +19,7 @@ dataset_path = "dataset/processed"
 model_path = "model/face_recognition_model.pkl"
 
 # ZIP dataset uploader
-st.header("STEP 1:")
+st.sidebar.header("STEP 1:")
 uploaded_zip = st.sidebar.file_uploader("Upload ZIP of Dataset", type=["zip"])
 if uploaded_zip is not None:
     extract_dir = "dataset/extracted"
@@ -29,7 +29,7 @@ if uploaded_zip is not None:
     st.success("✅ Dataset extracted. Ready to train!")
 
 # Model training
-st.header("STEP 2:")
+st.sidebar.header("STEP 2:")
 if st.sidebar.button("Train Model"):
     if uploaded_zip is None:
         st.error("Please upload a ZIP dataset first.")
@@ -50,7 +50,7 @@ if st.sidebar.button("Train Model"):
             st.error(f"Training error: {e}")
 
 # Image prediction
-st.header("STEP 3:")
+st.sidebar.header("STEP 3:")
 uploaded_image = st.sidebar.file_uploader("Upload Image for Prediction", type=["jpg", "jpeg", "png"])
 if uploaded_image is not None:
     st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
@@ -88,6 +88,6 @@ if uploaded_image is not None:
         st.error("❌ No face detected in image.")
 
 # Show sample faces
-st.header("Optional")
+st.sidebar.header("Optional")
 if st.sidebar.button("Show Sample Faces"):
     display_sample_faces("dataset/processed")
