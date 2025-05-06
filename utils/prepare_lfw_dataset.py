@@ -25,7 +25,7 @@ def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
     for root, dirs, _ in os.walk(extracted_dir):
         print(f"{root} -> dirs: {dirs}")
 
-    # Auto-detect the lfw-deepfunneled directory
+    # Handle the case where 'lfw-deepfunneled' might be nested
     lfw_root = None
     for root, dirs, _ in os.walk(extracted_dir):
         if "lfw-deepfunneled" in dirs:
