@@ -62,7 +62,6 @@ else:
 def load_model():
     try:
         model_data = joblib.load(MODEL_PATH)
-        st.write("Loaded model keys:", list(model_data.keys()))  # 👈 Add this line
         return model_data['model'], model_data['label_encoder'], model_data['pca']
     except Exception as e:
         st.error(f"Error loading model: {e}")
