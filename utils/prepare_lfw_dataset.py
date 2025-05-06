@@ -22,13 +22,13 @@ def download_lfw_from_kagglehub(download_path="lfw-data"):
         raise FileNotFoundError("Failed to download LFW dataset via kagglehub.")
 
 def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_cascade_path=None):
-    # Search recursively for folder containing many subfolders (person names)
+    # Search recursively for the correct LFW folder structure
     for root, dirs, files in os.walk(kaggle_download_dir):
-        if all(os.path.isdir(os.path.join(root, d)) for d in dirs) and len(dirs) > 10:
-            lfw_root = root
+        if 'lfw-deepfunneled' in dirs:
+            lfw_root = os.path.join(root, 'lfw-deepfunneled', 'lfw-deepfunneled')
             break
     else:
-        raise FileNotFoundError(f"Could not locate valid LFW folder inside '{kaggle_download_dir}'")
+        raise FileNotFoundError(f"LFW folder not found in '{kaggle_download_dir}'. Ensure download succeeded.")
 
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
@@ -61,7 +61,7 @@ def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_
                 save_path = os.path.join(output_person_dir, img_name)
                 cv2.imwrite(save_path, face)
                 break  # Save only the first detected face
-
+                
 if __name__ == "__main__":
     download_lfw_from_kagglehub()
     save_lfw_dataset()
