@@ -1,3 +1,9 @@
+import os
+import zipfile
+import shutil
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
 def save_lfw_dataset(zip_path, output_dir="dataset", face_cascade_path=None):
     """
     Extracts the ZIP file and processes the LFW dataset, saving detected faces into a clean subfolder.
