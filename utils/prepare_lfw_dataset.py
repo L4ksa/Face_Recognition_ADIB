@@ -39,6 +39,4 @@ def prepare_lfw_dataset(extracted_dir, processed_dir):
         total_persons += 1
         total_images += len(img_files)
 
-        st.write(f"✅ Copied {person_name} with {len(img_files)} images.")
-
     st.write(f"📦 Dataset prepared: {total_persons} persons, {total_images} images copied.")
