@@ -3,44 +3,43 @@ import shutil
 from sklearn.datasets import fetch_lfw_people
 from PIL import Image
 import numpy as np
+import cv2
+from deepface import DeepFace
+from deepface.commons import functions
+from tqdm import tqdm
 
-def save_lfw_dataset(output_dir="dataset", min_faces_per_person=5, image_limit_per_person=10):
-    """
-    Downloads and processes the LFW dataset, saving the images in a structured directory
-    for each person.
-    """
-    # Remove any existing dataset
+def save_lfw_dataset(output_dir="dataset", lfw_root="lfw-deepfunneled"):
+    if not os.path.exists(lfw_root):
+        print("Please manually download the LFW dataset and extract it to 'lfw-deepfunneled'")
+        return
+
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(output_dir)
 
-    print("Downloading and processing LFW dataset...")
-    # Download and load the LFW dataset
-    lfw_people = fetch_lfw_people(color=True, resize=1.0, funneled=True,
-                                  min_faces_per_person=min_faces_per_person, download_if_missing=True)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
-    X = lfw_people.images  # Shape is (n_samples, height, width, 3)
-    y = lfw_people.target
-    target_names = lfw_people.target_names  # List of unique person names
-
-    image_count = {}  # Track the number of images per person
-    for idx, (img_array, label_idx) in enumerate(zip(X, y)):
-        person_name = target_names[label_idx]
-        person_dir = os.path.join(output_dir, person_name.replace(" ", "_"))  # Directory for each person
-
-        # Limit images per person
-        if image_count.get(person_name, 0) >= image_limit_per_person:
+    for person_name in tqdm(os.listdir(lfw_root), desc="Extracting faces"):
+        person_dir = os.path.join(lfw_root, person_name)
+        if not os.path.isdir(person_dir):
             continue
 
-        os.makedirs(person_dir, exist_ok=True)
-        img = Image.fromarray(np.uint8(img_array))
+        for img_name in os.listdir(person_dir):
+            img_path = os.path.join(person_dir, img_name)
+            img = cv2.imread(img_path)
+            if img is None:
+                continue
 
-        # Save image
-        img_path = os.path.join(person_dir, f"{person_name.replace(' ', '_')}_{image_count.get(person_name, 0)}.jpg")
-        img.convert("RGB").save(img_path)
-        image_count[person_name] = image_count.get(person_name, 0) + 1
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 5)
 
-    print(f"LFW dataset saved to '{output_dir}' with {len(image_count)} people.")
+            for i, (x, y, w, h) in enumerate(faces):
+                face = img[y:y+h, x:x+w]
+                save_path = os.path.join(output_dir, f"{person_name}_{img_name}")
+                cv2.imwrite(save_path, face)
+                break  # Save only one face per image
+
+    print(f"Saved cropped faces to '{output_dir}'")
     
 def load_dataset(dataset_path="dataset"):
     """
