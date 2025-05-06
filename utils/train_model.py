@@ -7,22 +7,17 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 import joblib
 import cv2
+from collections import Counter
 
+# Function to prepare data from the dataset
 def prepare_data(dataset_path, train_csv, test_csv):
-    # Check dataset structure (optional, you can remove this block if no need to print directory structure)
-    # for person in os.listdir(dataset_path):
-    #     person_dir = os.path.join(dataset_path, person)
-    #     if os.path.isdir(person_dir):
-    #         for img in os.listdir(person_dir):
-    #             pass  # No print statements here to avoid lag
-
     # Load CSV files
     train_df = pd.read_csv(train_csv)
     test_df = pd.read_csv(test_csv)
 
     def load_embeddings(df):
         embeddings, labels = [], []
-        
+
         # Iterate through CSV and process images
         for _, row in df.iterrows():
             name = row["name"]
@@ -42,7 +37,7 @@ def prepare_data(dataset_path, train_csv, test_csv):
                     continue
 
                 try:
-                    img_bgr = cv2.imread(img_path)  
+                    img_bgr = cv2.imread(img_path)
                     embedding = DeepFace.represent(
                         img_bgr, 
                         model_name="VGG-Face", 
@@ -62,6 +57,7 @@ def prepare_data(dataset_path, train_csv, test_csv):
 
     return (X_train, y_train), (X_test, y_test)
 
+# Function to train the face recognizer
 def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
     # Ensure the directory exists
     model_dir = os.path.dirname(model_path)
@@ -73,35 +69,40 @@ def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
     if len(X_train) == 0:
         raise ValueError("No training data found. Check CSV paths and dataset folder.")
 
-    # Filter test set to contain only labels seen in training
-    valid_labels = set(y_train)
-    filtered_test = [(emb, label) for emb, label in zip(X_test, y_test) if label in valid_labels]
+    # Log the training label distribution
+    print("\nTraining label distribution:")
+    print(Counter(y_train))
 
-    if filtered_test:
-        X_test, y_test = zip(*filtered_test)
-        X_test = list(X_test)
-        y_test = list(y_test)
-    else:
-        X_test, y_test = [], []
-        print("Warning: No valid test data after filtering.")
+    # Optional: Warn if one class dominates
+    label_counts = Counter(y_train)
+    most_common = label_counts.most_common(1)[0]
+    if most_common[1] > len(y_train) * 0.5:
+        print(f"⚠️ Warning: '{most_common[0]}' dominates training set with {most_common[1]} samples.")
 
+    # Encode labels
     print("\nEncoding labels...")
     le = LabelEncoder()
     y_train_enc = le.fit_transform(y_train)
     y_test_enc = le.transform(y_test) if y_test else []
 
+    # Train the SVM classifier
     print("\nTraining SVM classifier...")
     clf = SVC(kernel="linear", probability=True)
     clf.fit(X_train, y_train_enc)
 
+    # Evaluate the model on the test set
     if X_test and y_test_enc:
-        print("\nEvaluating model...")
+        print("\nEvaluating model on test set...")
         preds = clf.predict(X_test)
         acc = accuracy_score(y_test_enc, preds)
         print(f"Test Accuracy: {acc:.2f}")
     else:
-        print("\nNo test evaluation performed due to empty test set.")
+        print("\nNo valid test set available. Evaluating on training set (not recommended for real validation).")
+        preds = clf.predict(X_train)
+        acc = accuracy_score(y_train_enc, preds)
+        print(f"Training Accuracy: {acc:.2f}")
 
+    # Save the trained model
     print("\nSaving model...")
     joblib.dump({"model": clf, "label_encoder": le}, model_path)
     print(f"Model saved to {model_path}")
