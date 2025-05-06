@@ -46,8 +46,6 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     if not image_paths:
         raise ValueError("No valid images found in dataset.")
 
-    print(f"✅ Loaded {len(image_paths)} images from {len(set(labels))} people.")
-
     X, y = [], []
     for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=len(image_paths), desc="🔍 Extracting embeddings")):
         image = cv2.imread(img_path)
