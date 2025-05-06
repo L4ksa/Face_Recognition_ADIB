@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import cv2
-import joblib
 from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
@@ -20,28 +19,22 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     if total_images == 0:
         raise ValueError("No images found for training.")
 
-    print(f"Total persons: {len(person_dirs)}")
-    print(f"Total images: {total_images}")
-    
     current = 0
 
     for person in tqdm(person_dirs, desc="Reading images"):
         person_path = os.path.join(dataset_path, person)
         if not os.path.isdir(person_path):
-            print(f"Skipping non-directory: {person_path}")
             continue
         
         for img_file in os.listdir(person_path):
             img_path = os.path.join(person_path, img_file)
             img = cv2.imread(img_path)
             if img is None:
-                print(f"Skipping unreadable image: {img_path}")
                 continue
 
             try:
                 embedding = get_face_embeddings(img)
                 if embedding is not None:
-                    print(f"Embedding extracted for image: {img_path}")
                     X.append(embedding)
                     y.append(person)
                 else:
@@ -55,7 +48,6 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
                 progress_callback(current / total_images)
 
     if not X:
-        print("No valid embeddings extracted from the dataset. Check if face embeddings are being properly extracted.")
         raise ValueError("No valid images found for training.")
 
     X = np.array(X)
