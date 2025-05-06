@@ -8,6 +8,7 @@ from PIL import Image
 from deepface import DeepFace
 from utils.prepare_lfw_dataset import save_lfw_dataset
 from utils.train_model import train_face_recognizer
+from utils.face_utils import get_face_embeddings  # Import face_utils for face processing
 
 st.set_page_config(page_title="Face Recognition System", page_icon=":smiley:")
 st.title("Face Recognition System")
@@ -56,11 +57,11 @@ else:
 @st.cache_resource
 def load_model():
     model_data = joblib.load(MODEL_PATH)
-    return model_data['model'], model_data['label_encoder']
+    return model_data['model'], model_data['label_encoder'], model_data['pca']
 
 # Load model if available
 if model_ready:
-    classifier, label_encoder = load_model()
+    classifier, label_encoder, pca = load_model()
 
     # Sidebar Step 3: Face Recognition
     st.sidebar.header("Step 3: Face Recognition")
@@ -84,11 +85,8 @@ if model_ready:
         for (x, y, w, h) in detected:
             face_img = image_cv[y:y+h, x:x+w]
             try:
-                embedding = DeepFace.represent(
-                    face_img,
-                    model_name="VGG-Face",
-                    enforce_detection=False
-                )[0]["embedding"]
+                # Use face_utils for face embeddings extraction
+                embedding = get_face_embeddings(face_img, model_name="ArcFace")
                 embeddings.append(embedding)
                 boxes.append((x, y, w, h))
             except Exception:
@@ -98,8 +96,12 @@ if model_ready:
             st.warning("No face embeddings were extracted.")
             return image_cv
 
-        predictions = classifier.predict(embeddings)
-        probs = classifier.predict_proba(embeddings)
+        # Reduce embeddings dimensions using PCA
+        embeddings_pca = pca.transform(embeddings)
+
+        # Make predictions
+        predictions = classifier.predict(embeddings_pca)
+        probs = classifier.predict_proba(embeddings_pca)
         top_probs = np.max(probs, axis=1)
         names = label_encoder.inverse_transform(predictions)
 
