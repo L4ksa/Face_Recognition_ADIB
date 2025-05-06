@@ -36,7 +36,7 @@ if st.sidebar.button("Train Model"):
     else:
         st.write("🔧 Preparing dataset...")
         try:
-            prepare_lfw_dataset("dataset/extracted/lfw-deepfunneled", dataset_path)
+            prepare_lfw_dataset(extracted_dir, processed_dir)
             st.write("✅ Dataset prepared.")
         except Exception as e:
             st.error(f"Dataset prep error: {e}")
