@@ -16,6 +16,8 @@ st.sidebar.title("📁 Options")
 
 # Paths
 dataset_path = "dataset/processed"
+extracted_dir = 'dataset/extracted'
+processed_dir = 'dataset/processed'
 model_path = "model/face_recognition_model.pkl"
 
 # ZIP dataset uploader
@@ -28,20 +30,15 @@ if uploaded_zip is not None:
         zip_ref.extractall(extract_dir)
     st.success("✅ Dataset extracted. Ready to train!")
 
-# Model training
+# Button to trigger dataset preparation
 st.sidebar.header("STEP 2:")
-if st.sidebar.button("Train Model"):
-    if uploaded_zip is None:
-        st.error("Please upload a ZIP dataset first.")
-    else:
-        st.write("🔧 Preparing dataset...")
-        try:
-            prepare_lfw_dataset(extracted_dir, processed_dir)
-            st.write("✅ Dataset prepared.")
-        except Exception as e:
-            st.error(f"Dataset prep error: {e}")
-            st.stop()
+if st.button('Prepare Dataset'):
+    st.write("🔧 Preparing dataset...")
+    prepare_lfw_dataset(extracted_dir, processed_dir)
 
+# Model training
+st.sidebar.header("STEP 3:")
+if st.sidebar.button("Train Model"):
         st.write("🤖 Training model...")
         try:
             st.write(f"Files in processed dataset: {os.listdir(dataset_path)}")
@@ -51,7 +48,7 @@ if st.sidebar.button("Train Model"):
             st.error(f"Training error: {e}")
 
 # Image prediction
-st.sidebar.header("STEP 3:")
+st.sidebar.header("STEP 4:")
 uploaded_image = st.sidebar.file_uploader("Upload Image for Prediction", type=["jpg", "jpeg", "png"])
 if uploaded_image is not None:
     st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
