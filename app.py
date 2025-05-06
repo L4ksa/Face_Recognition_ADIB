@@ -1,4 +1,5 @@
 import os
+os.environ["WATCHFILES_DISABLE_GLOBAL_WATCH"] = "1"
 import numpy as np
 import cv2
 import joblib
