@@ -39,13 +39,17 @@ if st.sidebar.button('Prepare Dataset'):
 # Model training
 st.sidebar.header("STEP 3:")
 if st.sidebar.button("Train Model"):
-        st.write("🤖 Training model...")
-        try:
-            st.write(f"Files in processed dataset: {os.listdir(dataset_path)}")
-            train_face_recognizer(dataset_path, model_path, progress_callback=st.progress)
-            st.success("🎉 Model trained successfully!")
-        except Exception as e:
-            st.error(f"Training error: {e}")
+    st.write("🤖 Training model...")
+
+    # Initialize progress bar
+    progress_bar = st.progress(0)
+
+    try:
+        # Pass progress_bar to the training function
+        train_face_recognizer(dataset_path, model_path, progress_callback=progress_bar)
+        st.success("🎉 Model trained successfully!")
+    except Exception as e:
+        st.error(f"Training error: {e}")
 
 # Image prediction
 st.sidebar.header("STEP 4:")
