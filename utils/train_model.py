@@ -85,7 +85,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         print("ℹ️ PCA skipped (too few samples).")
 
     # Train SVM classifier
-    clf = SVC(kernel='linear', probability=True)
+    clf = SVC(kernel='linear', probability=True, class_weight='balanced')
     clf.fit(X_transformed, y_encoded)
     print("🤖 Model training completed.")
 
