@@ -22,10 +22,13 @@ def download_lfw_from_kagglehub(download_path="lfw-data"):
         raise FileNotFoundError("Failed to download LFW dataset via kagglehub.")
 
 def save_lfw_dataset(kaggle_download_dir="lfw-data", output_dir="dataset", face_cascade_path=None):
-    lfw_root = os.path.join(kaggle_download_dir, "lfw")
-
-    if not os.path.exists(lfw_root):
-        raise FileNotFoundError(f"LFW folder not found in '{kaggle_download_dir}'. Ensure download succeeded.")
+    # Search recursively for folder containing many subfolders (person names)
+    for root, dirs, files in os.walk(kaggle_download_dir):
+        if all(os.path.isdir(os.path.join(root, d)) for d in dirs) and len(dirs) > 10:
+            lfw_root = root
+            break
+    else:
+        raise FileNotFoundError(f"Could not locate valid LFW folder inside '{kaggle_download_dir}'")
 
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
