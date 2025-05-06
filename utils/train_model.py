@@ -6,6 +6,7 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from tqdm import tqdm
+import time
 from utils.face_utils import get_face_embeddings
 
 def load_dataset(dataset_path):
@@ -47,7 +48,10 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         raise ValueError("No valid images found in dataset.")
 
     X, y = [], []
-    for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=len(image_paths), desc="🔍 Extracting embeddings")):
+    total_images = len(image_paths)
+    start_time = time.time()  # Track start time for time estimation
+
+    for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=total_images, desc="🔍 Extracting embeddings")):
         image = cv2.imread(img_path)
         if image is None:
             print(f"⚠️ Skipped unreadable image: {img_path}")
@@ -62,7 +66,13 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
         # Update progress bar if provided
         if progress_callback:
-            progress_callback((i + 1) / len(image_paths))
+            progress_callback((i + 1) / total_images)
+
+        # Estimate and display the remaining time
+        elapsed_time = time.time() - start_time
+        estimated_total_time = elapsed_time / ((i + 1) / total_images) if (i + 1) > 0 else 0
+        remaining_time = estimated_total_time - elapsed_time
+        st.write(f"⏱️ Estimated time remaining: {int(remaining_time)} seconds")  # Update this if using Streamlit
 
     if not X:
         raise ValueError("No embeddings extracted. Training aborted.")
