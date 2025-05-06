@@ -79,6 +79,19 @@ def train_face_recognizer(dataset_path, model_path, train_csv, test_csv):
     if most_common[1] > len(y_train) * 0.5:
         print(f"⚠️ Warning: '{most_common[0]}' dominates training set with {most_common[1]} samples.")
 
+    # Filter out test samples whose labels are not in the training set
+    train_labels_set = set(y_train)
+    X_test_filtered = []
+    y_test_filtered = []
+
+    for x, y in zip(X_test, y_test):
+        if y in train_labels_set:
+            X_test_filtered.append(x)
+            y_test_filtered.append(y)
+
+    X_test = X_test_filtered
+    y_test = y_test_filtered
+
     # Encode labels
     print("\nEncoding labels...")
     le = LabelEncoder()
