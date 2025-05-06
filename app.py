@@ -34,6 +34,8 @@ if not model_ready:
             train_face_recognizer(dataset_path="dataset", model_path="models/face_recognizer.pkl", train_csv="utils/peopleDevTrain.csv", test_csv="utils/peopleDevTest.csv")
         st.sidebar.success("Model trained and saved.")
         model_ready = True
+        st.cache_resource.clear()
+        classifier, label_encoder = load_model()
 else:
     st.sidebar.success("Model already trained.")
     
@@ -47,6 +49,8 @@ elif st.sidebar.button("Retrain Model"):
         )
     st.sidebar.success("Model retrained and saved.")
     model_ready = True
+    st.cache_resource.clear()
+    classifier, label_encoder = load_model()
 
 # Load model function
 @st.cache_resource
