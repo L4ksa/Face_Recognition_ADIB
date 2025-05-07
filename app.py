@@ -10,7 +10,7 @@ from io import BytesIO
 import gc
 os.environ["WATCHFILES_DISABLE_GLOBAL_WATCH"] = "1"
 
-from utils.train_model import train_face_recognizer
+from utils.train_model import train_face_recognizer, load_dataset
 from utils.prepare_lfw_dataset import prepare_lfw_dataset
 from utils.face_utils import get_face_embeddings, display_sample_faces
 
@@ -69,7 +69,6 @@ if st.sidebar.button("Train Model"):
         time_remaining_text.text(f"⏱️ Estimated time remaining: {estimated_remaining_time} seconds")
 
     try:
-        from utils.train_model import load_dataset
         image_paths, _ = load_dataset(dataset_path)
         total_images = len(image_paths)
 
