@@ -33,7 +33,7 @@ if uploaded_zip is not None:
 st.sidebar.header("STEP 2:")
 if st.sidebar.button('Prepare Dataset'):
     st.write("🔧 Preparing dataset...")
-    prepare_lfw_dataset(extracted_dir, processed_dir)
+    prepare_lfw_dataset(extracted_dir, dataset_path)
 
 # Model training
 st.sidebar.header("STEP 3:")
