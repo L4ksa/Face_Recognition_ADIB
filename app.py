@@ -7,6 +7,7 @@ import time
 import numpy as np
 from PIL import Image
 import gc
+import shutil
 os.environ["WATCHFILES_DISABLE_GLOBAL_WATCH"] = "1"
 
 from utils.train_model import train_face_recognizer, load_dataset
@@ -23,6 +24,13 @@ dataset_path = "dataset/processed"
 extracted_dir = "dataset/extracted"
 model_path = "model/face_recognition_model.pkl"
 features_path = "model/features_batch.npz"
+
+# Clean previous session data (for Streamlit Cloud reboot behavior)
+for path in [dataset_path, extracted_dir, model_path, features_path]:
+    if os.path.isfile(path):
+        os.remove(path)
+    elif os.path.isdir(path):
+        shutil.rmtree(path)
 
 # Step 1: ZIP dataset uploader
 st.sidebar.header("STEP 1:")
@@ -46,11 +54,12 @@ if st.sidebar.button("Train Model"):
     st.write("🤖 Training model...")
     progress_bar = st.progress(0)
     time_remaining_text = st.empty()
+    batch_progress_text = st.empty()
     start_time = time.time()
 
     times = []
 
-    def progress_callback(progress):
+    def progress_callback(progress, batch_info=None):
         current_time = time.time()
         if times:
             step_time = current_time - times[-1]
@@ -67,6 +76,8 @@ if st.sidebar.button("Train Model"):
 
         progress_bar.progress(progress)
         time_remaining_text.text(f"⏱️ Estimated time remaining: {estimated_remaining_time} seconds")
+        if batch_info:
+            batch_progress_text.text(batch_info)
 
     try:
         image_paths, _ = load_dataset(dataset_path)
