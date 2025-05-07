@@ -25,12 +25,14 @@ extracted_dir = "dataset/extracted"
 model_path = "model/face_recognition_model.pkl"
 features_path = "model/features_batch.npz"
 
-# Clean previous session data (for Streamlit Cloud reboot behavior)
-for path in [dataset_path, extracted_dir, model_path, features_path]:
-    if os.path.isfile(path):
-        os.remove(path)
-    elif os.path.isdir(path):
-        shutil.rmtree(path)
+# Optional: Clear all session data button
+if st.sidebar.button("❌ Clear All Data"):
+    for path in [dataset_path, extracted_dir, model_path, features_path]:
+        if os.path.isfile(path):
+            os.remove(path)
+        elif os.path.isdir(path):
+            shutil.rmtree(path)
+    st.sidebar.success("🧹 All data cleared. You can start fresh.")
 
 # Step 1: ZIP dataset uploader
 st.sidebar.header("STEP 1:")
@@ -39,7 +41,7 @@ if uploaded_zip is not None:
     os.makedirs(extracted_dir, exist_ok=True)
     with zipfile.ZipFile(uploaded_zip, "r") as zip_ref:
         zip_ref.extractall(extracted_dir)
-    st.success("✅ Dataset extracted. Ready to train!")
+        st.success("✅ Dataset extracted. Ready to train!")
 
 # Step 2: Prepare dataset
 st.sidebar.header("STEP 2:")
@@ -51,50 +53,53 @@ if st.sidebar.button('Prepare Dataset'):
 # Step 3: Train model
 st.sidebar.header("STEP 3:")
 if st.sidebar.button("Train Model"):
-    st.write("🤖 Training model...")
-    progress_bar = st.progress(0)
-    time_remaining_text = st.empty()
-    batch_progress_text = st.empty()
-    start_time = time.time()
+    if not os.path.exists(dataset_path) or not os.listdir(dataset_path):
+        st.error("❌ You must prepare the dataset before training.")
+    else:
+        st.write("🤖 Training model...")
+        progress_bar = st.progress(0)
+        time_remaining_text = st.empty()
+        batch_progress_text = st.empty()
+        start_time = time.time()
 
-    times = []
+        times = []
 
-    def progress_callback(progress, batch_info=None):
-        current_time = time.time()
-        if times:
-            step_time = current_time - times[-1]
-        else:
-            step_time = 0
-        times.append(current_time)
+        def progress_callback(progress, batch_info=None):
+            current_time = time.time()
+            if times:
+                step_time = current_time - times[-1]
+            else:
+                step_time = 0
+            times.append(current_time)
 
-        if len(times) > 10:
-            times.pop(0)
+            if len(times) > 10:
+                times.pop(0)
 
-        avg_time_per_step = np.mean(np.diff(times)) if len(times) > 1 else step_time
-        remaining_steps = total_images - int(progress * total_images)
-        estimated_remaining_time = int(avg_time_per_step * remaining_steps)
+            avg_time_per_step = np.mean(np.diff(times)) if len(times) > 1 else step_time
+            remaining_steps = total_images - int(progress * total_images)
+            estimated_remaining_time = int(avg_time_per_step * remaining_steps)
 
-        progress_bar.progress(progress)
-        time_remaining_text.text(f"⏱️ Estimated time remaining: {estimated_remaining_time} seconds")
-        if batch_info:
-            batch_progress_text.text(batch_info)
+            progress_bar.progress(progress)
+            time_remaining_text.text(f"⏱️ Estimated time remaining: {estimated_remaining_time} seconds")
+            if batch_info:
+                batch_progress_text.text(batch_info)
 
-    try:
-        image_paths, _ = load_dataset(dataset_path)
-        total_images = len(image_paths)
+        try:
+            image_paths, _ = load_dataset(dataset_path)
+            total_images = len(image_paths)
 
-        with st.spinner("🧠 Extracting features and training model in memory-safe batches..."):
-            train_face_recognizer(
-                dataset_path,
-                model_path,
-                features_path=features_path,
-                progress_callback=progress_callback
-            )
-            gc.collect()
-            st.success("🎉 Model trained successfully!")
+            with st.spinner("🧠 Extracting features and training model in memory-safe batches..."):
+                train_face_recognizer(
+                    dataset_path,
+                    model_path,
+                    features_path=features_path,
+                    progress_callback=progress_callback
+                )
+                gc.collect()
+                st.success("🎉 Model trained successfully!")
 
-    except Exception as e:
-        st.error(f"Training error: {e}")
+        except Exception as e:
+            st.error(f"Training error: {e}")
 
 # Step 4: Image prediction
 st.sidebar.header("STEP 4:")
