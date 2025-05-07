@@ -48,12 +48,25 @@ if st.sidebar.button("Train Model"):
     time_remaining_text = st.empty()
     start_time = time.time()
 
+    times = []  # List to store timestamps for averaging
+
     def progress_callback(progress):
-        elapsed_time = time.time() - start_time
-        estimated_total_time = elapsed_time / progress if progress > 0 else 0
-        estimated_remaining_time = estimated_total_time - elapsed_time
+        current_time = time.time()
+        if times:
+            step_time = current_time - times[-1]
+        else:
+            step_time = 0
+        times.append(current_time)
+
+        if len(times) > 10:
+            times.pop(0)
+
+        avg_time_per_step = np.mean(np.diff(times)) if len(times) > 1 else step_time
+        remaining_steps = total_images - int(progress * total_images)
+        estimated_remaining_time = int(avg_time_per_step * remaining_steps)
+
         progress_bar.progress(progress)
-        time_remaining_text.text(f"⏱️ Estimated time remaining: {int(estimated_remaining_time)} seconds")
+        time_remaining_text.text(f"⏱️ Estimated time remaining: {estimated_remaining_time} seconds")
 
     try:
         from utils.train_model import load_dataset
