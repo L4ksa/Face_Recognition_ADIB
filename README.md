@@ -23,14 +23,14 @@ Each subfolder name will be used as the person's label.
 
 1. **Clone the repo**:
 
-git clone https://github.com/yourusername/face-recognition-app.git
-cd face-recognition-app
+    git clone https://github.com/yourusername/face-recognition-app.git
+    cd face-recognition-app
 
 2. **Install dependencies**:
-pip install -r requirements.txt
+    pip install -r requirements.txt
 
-3. **Run the app**:
-streamlit run app.py
+4. **Run the app**:
+    streamlit run app.py
 
 ## 📦 Required Files and Folders
 Make sure your project has the following structure:
