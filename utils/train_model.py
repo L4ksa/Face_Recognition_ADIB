@@ -6,15 +6,14 @@ import joblib
 from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
-from tqdm import tqdm
-import time
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 from utils.face_utils import get_face_embeddings
 import streamlit as st
 
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
-    image_paths = []
-    labels = []
+    image_paths, labels = [], []
 
     if not os.path.exists(dataset_path):
         raise ValueError(f"Dataset path {dataset_path} does not exist.")
@@ -28,7 +27,6 @@ def load_dataset(dataset_path):
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 image_path = os.path.join(person_path, image_name)
                 image = cv2.imread(image_path)
-
                 if image is not None:
                     image_paths.append(image_path)
                     labels.append(person_name)
@@ -38,10 +36,7 @@ def load_dataset(dataset_path):
 def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     """
     Train a face recognition model using ArcFace embeddings and SVM.
-
-    :param dataset_path: Path to processed face images.
-    :param model_path: Path to save trained model.
-    :param progress_callback: Optional progress bar hook.
+    Returns classification metrics as a dictionary.
     """
     print("📂 Loading dataset...")
     image_paths, labels = load_dataset(dataset_path)
@@ -51,11 +46,8 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
     X, y = [], []
     total_images = len(image_paths)
-    
-    # Create a placeholder for displaying the time remaining
     time_placeholder = st.empty()
-
-    start_time = time.time()  # Record start time
+    start_time = time.time()
 
     for i, (img_path, label) in enumerate(zip(image_paths, labels)):
         image = cv2.imread(img_path)
@@ -70,17 +62,14 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         else:
             print(f"⚠️ No embedding from image: {img_path}")
 
-        # Update progress bar if provided
+        # Progress and time update
         if progress_callback:
             progress_callback((i + 1) / total_images)
 
-        # Estimate and display the remaining time
         elapsed_time = time.time() - start_time
-        estimated_total_time = elapsed_time / ((i + 1) / total_images) if (i + 1) > 0 else 0
-        remaining_time = estimated_total_time - elapsed_time
-        
-        # Update the time remaining in the same spot using the placeholder
-        time_placeholder.text(f"⏱️ Estimated time remaining: {int(remaining_time)} seconds")
+        estimated_total = elapsed_time / ((i + 1) / total_images)
+        remaining = estimated_total - elapsed_time
+        time_placeholder.text(f"⏱️ Estimated time remaining: {int(remaining)} seconds")
 
     if not X:
         raise ValueError("No embeddings extracted. Training aborted.")
@@ -88,12 +77,11 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     X = np.array(X)
     y = np.array(y)
 
-    # Encode string labels to integers
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
 
-    # Reduce dimensionality (ArcFace outputs 512-dim embeddings)
-    if X.shape[0] > 100:  # Enough samples for PCA
+    # Optional PCA
+    if X.shape[0] > 100:
         pca = PCA(n_components=100)
         X_transformed = pca.fit_transform(X)
         print("🧬 PCA applied (100 components).")
@@ -102,12 +90,25 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         X_transformed = X
         print("ℹ️ PCA skipped (too few samples).")
 
-    # Train SVM classifier
-    clf = SVC(kernel='linear', probability=True, class_weight='balanced')
-    clf.fit(X_transformed, y_encoded)
-    print("🤖 Model training completed.")
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_transformed, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
+    )
 
-    # Save model, PCA, and label encoder
+    # Train SVM
+    clf = SVC(kernel='linear', probability=True, class_weight='balanced')
+    clf.fit(X_train, y_train)
+    print("✅ Model trained.")
+
+    # Evaluation
+    y_pred = clf.predict(X_test)
+    report = classification_report(
+        y_test, y_pred,
+        target_names=label_encoder.classes_,
+        output_dict=True
+    )
+
+    # Save model artifacts
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     joblib.dump({
         'model': clf,
@@ -115,4 +116,5 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         'label_encoder': label_encoder
     }, model_path)
 
-    print(f"✅ Model saved to: {model_path}")
+    print(f"💾 Model saved to {model_path}")
+    return report
