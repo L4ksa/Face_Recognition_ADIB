@@ -1,5 +1,5 @@
 import os
-import gc
+import time
 import numpy as np
 import cv2
 import joblib
@@ -7,6 +7,8 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from utils.face_utils import get_face_embeddings
+import gc
+
 
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
@@ -24,10 +26,14 @@ def load_dataset(dataset_path):
         for image_name in os.listdir(person_path):
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 image_path = os.path.join(person_path, image_name)
-                image_paths.append(image_path)
-                labels.append(person_name)
+                image = cv2.imread(image_path)
+
+                if image is not None:
+                    image_paths.append(image_path)
+                    labels.append(person_name)
 
     return image_paths, labels
+
 
 def train_face_recognizer(dataset_path, model_path, progress_callback=None):
     try:
@@ -59,12 +65,11 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
                 if progress_callback:
                     progress_callback((i + 1) / total_images)
 
-                # Free memory every few iterations
-                if i % 20 == 0:
+                if i % 5 == 0:
                     gc.collect()
 
-            except Exception as e:
-                print(f"⚠️ Error processing {img_path}: {e}")
+            except Exception as err:
+                print(f"⚠️ Failed processing {img_path}: {err}")
                 failed += 1
 
         print(f"✅ Extracted embeddings from {successful} images.")
@@ -102,8 +107,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
         print(f"✅ Model saved to: {model_path}")
 
-        gc.collect()  # Final memory cleanup
+        gc.collect()
 
     except Exception as e:
         print(f"❌ Training failed: {e}")
-        raise
