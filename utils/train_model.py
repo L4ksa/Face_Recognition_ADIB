@@ -39,39 +39,43 @@ def load_dataset(dataset_path):
     return image_paths, labels
 
 
-def extract_features_in_batches(dataset_path, features_path, batch_size=BATCH_SIZE):
-    """Extract face embeddings from images in batches and save to disk."""
+def extract_features_in_batches(dataset_path, features_path, batch_size=100, progress_callback=None):
     image_paths, labels = load_dataset(dataset_path)
     total_images = len(image_paths)
-    all_embeddings = []
-    all_labels = []
 
-    print(f"🔍 Extracting features from {total_images} images...")
+    all_labels = []
+    all_embeddings = []
 
     for i in range(0, total_images, batch_size):
         batch_image_paths = image_paths[i:i + batch_size]
         batch_labels = labels[i:i + batch_size]
 
         embeddings = []
+        valid_labels = []
+
         for img_path, label in zip(batch_image_paths, batch_labels):
             try:
                 image = cv2.imread(img_path)
                 embedding = get_face_embeddings(image)
                 if embedding is not None:
                     embeddings.append(embedding)
-                    all_labels.append(label)
+                    valid_labels.append(label)
             except Exception as err:
                 print(f"⚠️ Failed processing {img_path}: {err}")
 
-        # Save batch embeddings and labels to disk after processing each batch
         if embeddings:
             all_embeddings.extend(embeddings)
-            print(f"🧠 Extracted embeddings for batch {i // batch_size + 1}")
+            all_labels.extend(valid_labels)
 
-        np.savez(features_path, embeddings=np.array(all_embeddings), labels=np.array(all_labels))
+        if progress_callback:
+            progress_callback((i + batch_size) / total_images, f"📦 Processed batch {i // batch_size + 1}")
+
+        gc.collect()
+
+    os.makedirs(os.path.dirname(features_path), exist_ok=True)
+    np.savez(features_path, embeddings=np.array(all_embeddings), labels=np.array(all_labels))
 
     return all_embeddings, all_labels
-
 
 def train_face_recognizer(dataset_path, model_path, features_path=FEATURES_PATH, progress_callback=None):
     try:
