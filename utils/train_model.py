@@ -73,7 +73,7 @@ def extract_features_in_batches(dataset_path, features_path, batch_size=BATCH_SI
     return all_embeddings, all_labels
 
 
-def train_face_recognizer(dataset_path, model_path, features_path=FEATURES_PATH, progress_callback=None, streamlit_error_callback=None):
+def train_face_recognizer(dataset_path, model_path, features_path=FEATURES_PATH, progress_callback=None):
     try:
         # Step 1: Feature extraction in batches and save to disk
         print("📂 Extracting features in batches...")
@@ -118,5 +118,5 @@ def train_face_recognizer(dataset_path, model_path, features_path=FEATURES_PATH,
     except Exception as e:
         error_message = f"❌ Training failed: {e}"
         print(error_message)
-        if streamlit_error_callback:
-            streamlit_error_callback(error_message)
+        if progress_callback:
+            progress_callback(error_message)
