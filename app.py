@@ -88,8 +88,7 @@ if st.sidebar.button("Train Model"):
                 dataset_path,
                 model_path,
                 features_path=features_path,
-                progress_callback=progress_callback,
-                streamlit_error_callback=st.error
+                progress_callback=progress_callback
             )
             gc.collect()
             st.success("🎉 Model trained successfully!")
