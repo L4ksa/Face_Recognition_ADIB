@@ -10,6 +10,10 @@ from utils.face_utils import get_face_embeddings
 import gc
 import streamlit as st
 
+BATCH_SIZE = 100  # The number of images per batch
+FEATURES_PATH = "model/features_batch.npz"  # Path to store the extracted features
+MODEL_PATH = "model/face_recognition_model.pkl"  # Path to save the trained model
+
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
     image_paths = []
@@ -34,84 +38,85 @@ def load_dataset(dataset_path):
 
     return image_paths, labels
 
-def train_face_recognizer(dataset_path, model_path, progress_callback=None, streamlit_error_callback=None):
-    try:
-        print("📂 Loading dataset...")
-        image_paths, labels = load_dataset(dataset_path)
 
-        if not image_paths:
-            raise ValueError("No valid images found in dataset.")
+def extract_features_in_batches(dataset_path, features_path, batch_size=BATCH_SIZE):
+    """Extract face embeddings from images in batches and save to disk."""
+    image_paths, labels = load_dataset(dataset_path)
+    total_images = len(image_paths)
+    all_embeddings = []
+    all_labels = []
 
-        X, y = [], []
-        total_images = len(image_paths)
-        successful, failed = 0, 0
+    print(f"🔍 Extracting features from {total_images} images...")
 
-        for i, (img_path, label) in enumerate(zip(image_paths, labels)):
+    for i in range(0, total_images, batch_size):
+        batch_image_paths = image_paths[i:i + batch_size]
+        batch_labels = labels[i:i + batch_size]
+
+        embeddings = []
+        for img_path, label in zip(batch_image_paths, batch_labels):
             try:
                 image = cv2.imread(img_path)
-                if image is None:
-                    failed += 1
-                    continue
-
                 embedding = get_face_embeddings(image)
                 if embedding is not None:
-                    X.append(embedding)
-                    y.append(label)
-                    successful += 1
-                else:
-                    failed += 1
-
-                if progress_callback:
-                    progress_callback((i + 1) / total_images)
-
-                if i % 5 == 0:
-                    gc.collect()
-
+                    embeddings.append(embedding)
+                    all_labels.append(label)
             except Exception as err:
                 print(f"⚠️ Failed processing {img_path}: {err}")
-                failed += 1
 
-        print(f"✅ Extracted embeddings from {successful} images.")
-        if failed:
-            print(f"⚠️ Failed to process {failed} images.")
+        # Save batch embeddings and labels to disk after processing each batch
+        if embeddings:
+            all_embeddings.extend(embeddings)
+            print(f"🧠 Extracted embeddings for batch {i // batch_size + 1}")
 
-        if not X:
+        np.savez(features_path, embeddings=np.array(all_embeddings), labels=np.array(all_labels))
+
+    return all_embeddings, all_labels
+
+
+def train_face_recognizer(dataset_path, model_path, features_path=FEATURES_PATH, progress_callback=None):
+    try:
+        # Step 1: Feature extraction in batches and save to disk
+        print("📂 Extracting features in batches...")
+        embeddings, labels = extract_features_in_batches(dataset_path, features_path)
+
+        if not embeddings:
             raise ValueError("No embeddings extracted. Training aborted.")
 
-        X = np.array(X)
-        y = np.array(y)
+        print(f"✅ Extracted {len(embeddings)} embeddings.")
 
-        if len(np.unique(y)) < 2:
-            raise ValueError(f"The number of classes has to be greater than one; got {len(np.unique(y))} class.")
-
+        # Step 2: Prepare data for training
         label_encoder = LabelEncoder()
-        y_encoded = label_encoder.fit_transform(y)
+        y_encoded = label_encoder.fit_transform(labels)
+        X = np.array(embeddings)
 
+        if len(np.unique(y_encoded)) < 2:
+            raise ValueError(f"The number of classes has to be greater than one; got {len(np.unique(y_encoded))} class.")
+
+        # Apply PCA if necessary
+        pca = None
         if X.shape[0] > 100:
             pca = PCA(n_components=100)
-            X_transformed = pca.fit_transform(X)
+            X = pca.fit_transform(X)
             print("🧬 PCA applied.")
-        else:
-            pca = None
-            X_transformed = X
-            print("ℹ️ PCA skipped.")
 
+        # Step 3: Train the SVM classifier
         clf = SVC(kernel='linear', probability=True, class_weight='balanced')
-        clf.fit(X_transformed, y_encoded)
+        clf.fit(X, y_encoded)
         print("🤖 Model training completed.")
 
+        # Step 4: Save the trained model and PCA
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         joblib.dump({
             'model': clf,
             'pca': pca,
             'label_encoder': label_encoder
         }, model_path)
-
         print(f"✅ Model saved to: {model_path}")
+
         gc.collect()
 
     except Exception as e:
         error_message = f"❌ Training failed: {e}"
         print(error_message)
-        if streamlit_error_callback:
-            streamlit_error_callback(error_message)
+        if progress_callback:
+            progress_callback(error_message)
