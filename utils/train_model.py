@@ -1,5 +1,4 @@
 import os
-import time
 import numpy as np
 import cv2
 import joblib
@@ -8,7 +7,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from utils.face_utils import get_face_embeddings
 import gc
-
 
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
@@ -35,7 +33,7 @@ def load_dataset(dataset_path):
     return image_paths, labels
 
 
-def train_face_recognizer(dataset_path, model_path, progress_callback=None):
+def train_face_recognizer(dataset_path, model_path, progress_callback=None, batch_size=50):
     try:
         print("📂 Loading dataset...")
         image_paths, labels = load_dataset(dataset_path)
@@ -65,12 +63,56 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
                 if progress_callback:
                     progress_callback((i + 1) / total_images)
 
-                if i % 5 == 0:
+                # Process in batches to reduce memory load
+                if len(X) >= batch_size:
+                    X_batch = np.array(X)
+                    y_batch = np.array(y)
+
+                    label_encoder = LabelEncoder()
+                    y_encoded = label_encoder.fit_transform(y_batch)
+
+                    if X_batch.shape[0] > 100:
+                        pca = PCA(n_components=100)
+                        X_transformed = pca.fit_transform(X_batch)
+                        print("🧬 PCA applied.")
+                    else:
+                        pca = None
+                        X_transformed = X_batch
+                        print("ℹ️ PCA skipped.")
+
+                    clf = SVC(kernel='linear', probability=True, class_weight='balanced')
+                    clf.fit(X_transformed, y_encoded)
+                    print(f"🤖 Model trained on batch {i // batch_size + 1}.")
+
+                    # Clear batch data
+                    X.clear()
+                    y.clear()
                     gc.collect()
 
             except Exception as err:
                 print(f"⚠️ Failed processing {img_path}: {err}")
                 failed += 1
+
+        # Final training on any remaining data
+        if len(X) > 0:
+            X_batch = np.array(X)
+            y_batch = np.array(y)
+
+            label_encoder = LabelEncoder()
+            y_encoded = label_encoder.fit_transform(y_batch)
+
+            if X_batch.shape[0] > 100:
+                pca = PCA(n_components=100)
+                X_transformed = pca.fit_transform(X_batch)
+                print("🧬 PCA applied.")
+            else:
+                pca = None
+                X_transformed = X_batch
+                print("ℹ️ PCA skipped.")
+
+            clf = SVC(kernel='linear', probability=True, class_weight='balanced')
+            clf.fit(X_transformed, y_encoded)
+            print(f"🤖 Final model trained.")
 
         print(f"✅ Extracted embeddings from {successful} images.")
         if failed:
@@ -78,25 +120,6 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
         if not X:
             raise ValueError("No embeddings extracted. Training aborted.")
-
-        X = np.array(X)
-        y = np.array(y)
-
-        label_encoder = LabelEncoder()
-        y_encoded = label_encoder.fit_transform(y)
-
-        if X.shape[0] > 100:
-            pca = PCA(n_components=100)
-            X_transformed = pca.fit_transform(X)
-            print("🧬 PCA applied.")
-        else:
-            pca = None
-            X_transformed = X
-            print("ℹ️ PCA skipped.")
-
-        clf = SVC(kernel='linear', probability=True, class_weight='balanced')
-        clf.fit(X_transformed, y_encoded)
-        print("🤖 Model training completed.")
 
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         joblib.dump({
