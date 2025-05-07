@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 from io import BytesIO
 import gc
+os.environ["WATCHFILES_DISABLE_GLOBAL_WATCH"] = "1"
 
 from utils.train_model import train_face_recognizer
 from utils.prepare_lfw_dataset import prepare_lfw_dataset
