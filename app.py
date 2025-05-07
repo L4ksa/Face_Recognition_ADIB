@@ -58,8 +58,13 @@ if st.sidebar.button("Train Model"):
         from utils.train_model import load_dataset
         image_paths, _ = load_dataset(dataset_path)
         total_images = len(image_paths)
-        train_face_recognizer(dataset_path, model_path, progress_callback)
-        st.success("🎉 Model trained successfully!")
+
+        # Limit memory usage
+        with st.spinner("🧠 Extracting features and training model in memory-safe batches..."):
+            train_face_recognizer(dataset_path, model_path, progress_callback)
+            gc.collect()
+            st.success("🎉 Model trained successfully!")
+
     except Exception as e:
         st.error(f"Training error: {e}")
 
