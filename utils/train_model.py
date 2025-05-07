@@ -70,18 +70,6 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         else:
             print(f"⚠️ No embedding from image: {img_path}")
 
-        # Update progress bar if provided
-        if progress_callback:
-            progress_callback((i + 1) / total_images)
-
-        # Estimate and display the remaining time
-        elapsed_time = time.time() - start_time
-        estimated_total_time = elapsed_time / ((i + 1) / total_images) if (i + 1) > 0 else 0
-        remaining_time = estimated_total_time - elapsed_time
-        st.write(f"⏱️ Estimated time remaining: {int(remaining_time)} seconds")  # Update this if using Streamlit
-
-
-
     if not X:
         raise ValueError("No embeddings extracted. Training aborted.")
 
