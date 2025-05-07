@@ -3,7 +3,8 @@ import time
 import numpy as np
 import cv2
 import joblib
-from sklearn.svm import SVC
+import gc
+from sklearn.svm import LinearSVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from utils.face_utils import get_face_embeddings
@@ -83,7 +84,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
             X_transformed = X
             print("ℹ️ PCA skipped.")
 
-        clf = SVC(kernel='linear', probability=True, class_weight='balanced')
+        clf = LinearSVC(class_weight='balanced', max_iter=10000)
         clf.fit(X_transformed, y_encoded)
         print("🤖 Model training completed.")
 
@@ -95,6 +96,10 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         }, model_path)
 
         print(f"✅ Model saved to: {model_path}")
+
+        # Clean up memory
+        del X, y, X_transformed, clf
+        gc.collect()
 
     except Exception as e:
         print(f"❌ Training failed: {e}")
