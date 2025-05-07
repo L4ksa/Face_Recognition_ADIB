@@ -6,7 +6,6 @@ import cv2
 import time
 import numpy as np
 from PIL import Image
-from io import BytesIO
 import gc
 os.environ["WATCHFILES_DISABLE_GLOBAL_WATCH"] = "1"
 
@@ -23,6 +22,7 @@ st.sidebar.title("📁 Options")
 dataset_path = "dataset/processed"
 extracted_dir = "dataset/extracted"
 model_path = "model/face_recognition_model.pkl"
+features_path = "model/features_batch.npz"
 
 # Step 1: ZIP dataset uploader
 st.sidebar.header("STEP 1:")
@@ -48,7 +48,7 @@ if st.sidebar.button("Train Model"):
     time_remaining_text = st.empty()
     start_time = time.time()
 
-    times = []  # List to store timestamps for averaging
+    times = []
 
     def progress_callback(progress):
         current_time = time.time()
@@ -72,9 +72,14 @@ if st.sidebar.button("Train Model"):
         image_paths, _ = load_dataset(dataset_path)
         total_images = len(image_paths)
 
-        # Limit memory usage
         with st.spinner("🧠 Extracting features and training model in memory-safe batches..."):
-            train_face_recognizer(dataset_path, model_path, progress_callback)
+            train_face_recognizer(
+                dataset_path,
+                model_path,
+                features_path=features_path,
+                progress_callback=progress_callback,
+                streamlit_error_callback=st.error
+            )
             gc.collect()
             st.success("🎉 Model trained successfully!")
 
