@@ -28,7 +28,6 @@ def get_face_embeddings(img, model_name="ArcFace"):
         )
 
         if embeddings and isinstance(embeddings, list):
-            print("✅ Embeddings extracted successfully.")
             return np.array(embeddings[0]['embedding'])
         else:
             print("⚠️ No embeddings found.")
