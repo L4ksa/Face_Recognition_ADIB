@@ -1,10 +1,9 @@
 import os
-import time
+import gc
 import numpy as np
 import cv2
 import joblib
-import gc
-from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from utils.face_utils import get_face_embeddings
@@ -25,11 +24,8 @@ def load_dataset(dataset_path):
         for image_name in os.listdir(person_path):
             if image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 image_path = os.path.join(person_path, image_name)
-                image = cv2.imread(image_path)
-
-                if image is not None:
-                    image_paths.append(image_path)
-                    labels.append(person_name)
+                image_paths.append(image_path)
+                labels.append(person_name)
 
     return image_paths, labels
 
@@ -46,21 +42,30 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         successful, failed = 0, 0
 
         for i, (img_path, label) in enumerate(zip(image_paths, labels)):
-            image = cv2.imread(img_path)
-            if image is None:
-                failed += 1
-                continue
+            try:
+                image = cv2.imread(img_path)
+                if image is None:
+                    failed += 1
+                    continue
 
-            embedding = get_face_embeddings(image)
-            if embedding is not None:
-                X.append(embedding)
-                y.append(label)
-                successful += 1
-            else:
-                failed += 1
+                embedding = get_face_embeddings(image)
+                if embedding is not None:
+                    X.append(embedding)
+                    y.append(label)
+                    successful += 1
+                else:
+                    failed += 1
 
-            if progress_callback:
-                progress_callback((i + 1) / total_images)
+                if progress_callback:
+                    progress_callback((i + 1) / total_images)
+
+                # Free memory every few iterations
+                if i % 20 == 0:
+                    gc.collect()
+
+            except Exception as e:
+                print(f"⚠️ Error processing {img_path}: {e}")
+                failed += 1
 
         print(f"✅ Extracted embeddings from {successful} images.")
         if failed:
@@ -84,7 +89,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
             X_transformed = X
             print("ℹ️ PCA skipped.")
 
-        clf = LinearSVC(class_weight='balanced', max_iter=10000)
+        clf = SVC(kernel='linear', probability=True, class_weight='balanced')
         clf.fit(X_transformed, y_encoded)
         print("🤖 Model training completed.")
 
@@ -97,9 +102,8 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
         print(f"✅ Model saved to: {model_path}")
 
-        # Clean up memory
-        del X, y, X_transformed, clf
-        gc.collect()
+        gc.collect()  # Final memory cleanup
 
     except Exception as e:
         print(f"❌ Training failed: {e}")
+        raise
