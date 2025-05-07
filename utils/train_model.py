@@ -8,8 +8,8 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+from collections import Counter
 from utils.face_utils import get_face_embeddings
-import streamlit as st
 
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
@@ -33,7 +33,7 @@ def load_dataset(dataset_path):
 
     return image_paths, labels
 
-def train_face_recognizer(dataset_path, model_path, progress_callback=None):
+def train_face_recognizer(dataset_path, model_path):
     """
     Train a face recognition model using ArcFace embeddings and SVM.
     Returns classification metrics as a dictionary.
@@ -45,11 +45,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         raise ValueError("No valid images found in dataset.")
 
     X, y = [], []
-    total_images = len(image_paths)
-    time_placeholder = st.empty()
-    start_time = time.time()
-
-    for i, (img_path, label) in enumerate(zip(image_paths, labels)):
+    for img_path, label in zip(image_paths, labels):
         image = cv2.imread(img_path)
         if image is None:
             print(f"⚠️ Skipped unreadable image: {img_path}")
@@ -62,21 +58,26 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         else:
             print(f"⚠️ No embedding from image: {img_path}")
 
-        # Progress and time update
-        if progress_callback:
-            progress_callback((i + 1) / total_images)
-
-        elapsed_time = time.time() - start_time
-        estimated_total = elapsed_time / ((i + 1) / total_images)
-        remaining = estimated_total - elapsed_time
-        time_placeholder.text(f"⏱️ Estimated time remaining: {int(remaining)} seconds")
-
     if not X:
         raise ValueError("No embeddings extracted. Training aborted.")
 
-    X = np.array(X)
-    y = np.array(y)
+    # Filter out classes with fewer than 2 samples
+    label_counts = Counter(y)
+    X_filtered = []
+    y_filtered = []
 
+    for x_val, label in zip(X, y):
+        if label_counts[label] >= 2:
+            X_filtered.append(x_val)
+            y_filtered.append(label)
+
+    if not X_filtered:
+        raise ValueError("No class has at least 2 samples. Training cannot proceed.")
+
+    X = np.array(X_filtered)
+    y = np.array(y_filtered)
+
+    # Encode string labels
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
 
@@ -90,17 +91,17 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         X_transformed = X
         print("ℹ️ PCA skipped (too few samples).")
 
-    # Train-test split
+    # Train/Test split
     X_train, X_test, y_train, y_test = train_test_split(
         X_transformed, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
     )
 
-    # Train SVM
+    # Train SVM classifier
     clf = SVC(kernel='linear', probability=True, class_weight='balanced')
     clf.fit(X_train, y_train)
     print("✅ Model trained.")
 
-    # Evaluation
+    # Evaluate
     y_pred = clf.predict(X_test)
     report = classification_report(
         y_test, y_pred,
@@ -108,7 +109,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
         output_dict=True
     )
 
-    # Save model artifacts
+    # Save model
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     joblib.dump({
         'model': clf,
