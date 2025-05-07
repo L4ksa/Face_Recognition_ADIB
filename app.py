@@ -41,7 +41,7 @@ if uploaded_zip is not None:
     os.makedirs(extracted_dir, exist_ok=True)
     with zipfile.ZipFile(uploaded_zip, "r") as zip_ref:
         zip_ref.extractall(extracted_dir)
-        st.success("✅ Dataset extracted. Ready to train!")
+    st.success("✅ Dataset extracted. Ready to train!")
 
 # Step 2: Prepare dataset
 st.sidebar.header("STEP 2:")
@@ -87,6 +87,9 @@ if st.sidebar.button("Train Model"):
         try:
             image_paths, _ = load_dataset(dataset_path)
             total_images = len(image_paths)
+
+            # Ensure model directory exists
+            os.makedirs(os.path.dirname(features_path), exist_ok=True)
 
             with st.spinner("🧠 Extracting features and training model in memory-safe batches..."):
                 train_face_recognizer(
