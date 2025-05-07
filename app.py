@@ -16,6 +16,7 @@ st.sidebar.title("📁 Options")
 
 # Paths
 dataset_path = "dataset/processed"
+extracted_dir = "dataset/extracted"
 model_path = "model/face_recognition_model.pkl"
 
 # ZIP dataset uploader
