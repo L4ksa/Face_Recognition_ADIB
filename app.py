@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from io import BytesIO
-from utils.train_model import train_face_recognizer
+from utils.train_model import train_face_recognizer_from_embeddings
 from utils.prepare_lfw_dataset import prepare_lfw_dataset
 from utils.face_utils import get_face_embeddings, display_sample_faces
 import pandas as pd
@@ -64,25 +64,53 @@ if st.session_state.is_training and not st.session_state.train_complete:
     progress_bar = st.progress(0)
     status_text = st.empty()
 
-    import time
+    from collections import Counter
+    from utils.train_model import load_dataset, train_face_recognizer_from_embeddings
+
+    image_paths, labels = load_dataset(dataset_path)
+    total_images = len(image_paths)
+
+    X, y = [], []
     start_time = time.time()
 
-    def update_progress(p):
+    for i, (img_path, label) in enumerate(zip(image_paths, labels)):
+        image = cv2.imread(img_path)
+        if image is None:
+            continue
+        embedding = get_face_embeddings(image)
+        if embedding is not None:
+            X.append(embedding)
+            y.append(label)
+        
         elapsed = time.time() - start_time
-        remaining = (elapsed / p - elapsed) if p > 0 else 0
-        progress_bar.progress(p)
+        progress = (i + 1) / total_images
+        remaining = (elapsed / progress - elapsed) if progress > 0 else 0
+        progress_bar.progress(progress)
         status_text.text(f"⏱️ Estimated time remaining: {int(remaining)} seconds")
 
-    try:
-        report = train_face_recognizer(dataset_path, model_path, progress_callback=update_progress)
-        st.success("🎉 Model trained successfully!")
-        st.session_state.train_complete = True
+    # Filter out classes with < 2 samples
+    label_counts = Counter(y)
+    X_filtered = []
+    y_filtered = []
+    for x_val, label in zip(X, y):
+        if label_counts[label] >= 2:
+            X_filtered.append(x_val)
+            y_filtered.append(label)
+
+    if len(X_filtered) < 2:
+        st.error("🚫 Not enough data to train. Make sure at least one class has 2 or more samples.")
         st.session_state.is_training = False
-        st.session_state.training_report = report
-        st.session_state.model_data = joblib.load(model_path)
-    except Exception as e:
-        st.error(f"Training error: {e}")
-        st.session_state.is_training = False
+    else:
+        try:
+            report = train_face_recognizer_from_embeddings(np.array(X_filtered), np.array(y_filtered), model_path)
+            st.success("🎉 Model trained successfully!")
+            st.session_state.train_complete = True
+            st.session_state.is_training = False
+            st.session_state.training_report = report
+            st.session_state.model_data = joblib.load(model_path)
+        except Exception as e:
+            st.error(f"Training error: {e}")
+            st.session_state.is_training = False
 
 # Step 3.5: Upload Pretrained Model
 st.sidebar.header("OR: Upload Trained Model")
