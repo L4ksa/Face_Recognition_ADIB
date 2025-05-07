@@ -42,12 +42,25 @@ if st.sidebar.button("Train Model"):
 
     # Initialize progress bar
     progress_bar = st.progress(0)
+    time_remaining_text = st.empty()  # To display the time remaining message in the same line
+    start_time = time.time()
 
     def progress_callback(progress):
-        """Update the progress bar with current progress."""
+        """Update the progress bar and estimated time remaining."""
+        elapsed_time = time.time() - start_time
+        steps_completed = int(progress * total_images)
+        estimated_total_time = elapsed_time / progress if progress > 0 else 0
+        estimated_remaining_time = estimated_total_time - elapsed_time
+
+        # Update progress bar
         progress_bar.progress(progress)
 
+        # Update time remaining text in the same line
+        time_remaining_text.text(f"⏱️ Estimated time remaining: {int(estimated_remaining_time)} seconds")
+
     try:
+        # Fetch the total number of images for progress calculations
+        total_images = len(os.listdir(dataset_path))  # Or get the actual total number of images from dataset
         # Pass the progress_callback to the training function
         train_face_recognizer(dataset_path, model_path, progress_callback)
 
