@@ -26,13 +26,13 @@ Each subfolder name will be used as the person's label.
 git clone https://github.com/yourusername/face-recognition-app.git
 cd face-recognition-app
 
-Install dependencies:
+2. **Install dependencies**:
 pip install -r requirements.txt
 
-Run the app:
+3. **Run the app**:
 streamlit run app.py
 
-📦 Required Files and Folders
+## 📦 Required Files and Folders
 Make sure your project has the following structure:
 
 face-recognition-app/
@@ -50,7 +50,7 @@ face-recognition-app/
 └── README.md
 
 
-📝 Usage Guide
+## 📝 Usage Guide
 STEP 1 – Upload a ZIP file containing face images.
 
 STEP 2 – Click “Prepare Dataset” to process and align the images.
@@ -62,7 +62,7 @@ STEP 4 – Upload a test image to identify using the trained model.
 (Optional) Show random sample images from the dataset.
 
 
-🙋 FAQ
+## 🙋 FAQ
 Q: Will my files be deleted if I refresh the app?
 No. Your uploaded dataset and trained model will remain in the dataset/ and model/ directories unless you explicitly delete them.
 
@@ -72,5 +72,5 @@ This app uses class_weight='balanced' in the SVM classifier to help mitigate cla
 Q: Does it support real-time webcam recognition?
 Not yet, but it's possible to extend this with OpenCV's VideoCapture and real-time face embedding.
 
-📄 License
+## 📄 License
 MIT License – feel free to use, modify, and distribute.
