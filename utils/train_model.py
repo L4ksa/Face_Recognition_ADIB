@@ -6,10 +6,7 @@ import joblib
 from sklearn.svm import SVC
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
-from tqdm import tqdm
-import time
 from utils.face_utils import get_face_embeddings
-import streamlit as st
 
 def load_dataset(dataset_path):
     """Load valid image paths and labels from the dataset directory."""
@@ -41,7 +38,7 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
     :param dataset_path: Path to processed face images.
     :param model_path: Path to save trained model.
-    :param progress_callback: Optional progress bar hook.
+    :param progress_callback: Optional progress bar hook to update progress.
     """
     print("📂 Loading dataset...")
     image_paths, labels = load_dataset(dataset_path)
@@ -51,13 +48,8 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
 
     X, y = [], []
     total_images = len(image_paths)
-    start_time = time.time()  # Track start time for time estimation
 
-
-
-    for i, (img_path, label) in enumerate(tqdm(zip(image_paths, labels), total=total_images, desc="🔍 Extracting embeddings")):
-
-
+    for i, (img_path, label) in enumerate(zip(image_paths, labels)):
         image = cv2.imread(img_path)
         if image is None:
             print(f"⚠️ Skipped unreadable image: {img_path}")
@@ -69,6 +61,10 @@ def train_face_recognizer(dataset_path, model_path, progress_callback=None):
             y.append(label)
         else:
             print(f"⚠️ No embedding from image: {img_path}")
+
+        # Update progress if callback is provided
+        if progress_callback:
+            progress_callback((i + 1) / total_images)
 
     if not X:
         raise ValueError("No embeddings extracted. Training aborted.")
