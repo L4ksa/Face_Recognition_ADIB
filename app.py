@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 import gc
 import shutil
+import psutil
 os.environ["WATCHFILES_DISABLE_GLOBAL_WATCH"] = "1"
 
 from utils.train_model import train_face_recognizer, load_dataset
@@ -88,7 +89,18 @@ if st.sidebar.button("Train Model"):
             image_paths, _ = load_dataset(dataset_path)
             total_images = len(image_paths)
 
-            # Ensure model directory exists
+            # Auto-adjust batch size based on available memory
+            available_mem_gb = psutil.virtual_memory().available / (1024 ** 3)
+            if available_mem_gb >= 8:
+                batch_size = 100
+            elif available_mem_gb >= 4:
+                batch_size = 50
+            else:
+                batch_size = 25
+            st.write(f"🧮 Using batch size: {batch_size} based on {available_mem_gb:.2f} GB available RAM")
+
+            # Ensure model and feature directories exist
+            os.makedirs(os.path.dirname(model_path), exist_ok=True)
             os.makedirs(os.path.dirname(features_path), exist_ok=True)
 
             with st.spinner("🧠 Extracting features and training model in memory-safe batches..."):
@@ -96,7 +108,8 @@ if st.sidebar.button("Train Model"):
                     dataset_path,
                     model_path,
                     features_path=features_path,
-                    progress_callback=progress_callback
+                    progress_callback=progress_callback,
+                    batch_size=batch_size
                 )
                 gc.collect()
                 st.success("🎉 Model trained successfully!")
