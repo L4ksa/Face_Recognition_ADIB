@@ -14,19 +14,12 @@ A user-friendly web application for training and running face recognition models
 
 ## 📁 Dataset Structure
 
-The uploaded ZIP file should be structured as follows:
+The uploaded ZIP file should be downloaded from the link below:
 
 ```
-dataset.zip
-└── person1/
-    ├── image1.jpg
-    └── image2.jpg
-└── person2/
-    ├── image1.jpg
-    └── image2.jpg
+https://www.kaggle.com/datasets/jessicali9530/lfw-dataset/data
 ```
 
-Each subfolder name will be used as the person's label.
 
 ## 🔧 Installation
 
