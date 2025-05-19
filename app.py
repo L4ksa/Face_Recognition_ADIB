@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 import gc
 import shutil
-import psutil
+#import psutil
 os.environ["WATCHFILES_DISABLE_GLOBAL_WATCH"] = "1"
 
 from utils.train_model import train_face_recognizer, load_dataset
